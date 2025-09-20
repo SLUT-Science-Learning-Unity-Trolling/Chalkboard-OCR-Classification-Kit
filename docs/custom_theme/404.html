@@ -3,18 +3,40 @@
 {% block content %}
   <div class="md-content md-content--404" style="text-align: center; padding: 2rem;">
     <div class="mdx-content" markdown>
-			<div># 404 - Страница не найдена</div>
-			<img src="/rat.gif" alt="404 Animation" style="max-width: 300px; margin: 1rem auto; display: block; cursor: pointer;" onclick="playSound();">
+      <div># 404 - Страница не найдена</div>
+      <img src="/rat-static.png" alt="404 Animation" id="ratImage" style="max-width: 300px; margin: 1rem auto; display: block; cursor: pointer; transition: transform 10.5s linear;">
       К сожалению, запрашиваемая страница не существует. Возможно, вы ввели неверный адрес или страница была удалена.
-			<audio id="clickSound" src="free_bird.mp3" preload="auto"></audio>
+      <audio id="clickSound" src="free_bird_3.mp3" preload="auto"></audio>
 
       <script>
-        function playSound() {
-          var sound = document.getElementById("clickSound");
-          sound.play().catch(function(error) {
-            console.error("Ошибка воспроизведения звука:", error);
-          });
-        }
+        const image = document.getElementById("ratImage");
+        const sound = document.getElementById("clickSound");
+        let isEnlarged = false;
+
+        image.addEventListener("click", () => {
+          if (!isEnlarged) {
+            // Apply scaling animation and play sound immediately
+            image.style.transform = "scale(5)";
+            isEnlarged = true;
+            sound.play().catch((error) => {
+              console.error("Ошибка воспроизведения звука:", error);
+            });
+
+            // After animation completes, swap to animated GIF
+            image.addEventListener(
+              "transitionend",
+              () => {
+                image.src = "/rat.gif"; // Switch to animated GIF
+              },
+              { once: true }
+            );
+          } else {
+            // Reset to original size and swap back to static image
+            image.style.transform = "scale(1)";
+            image.src = "/rat-static.png"; // Switch back to static image
+            isEnlarged = false;
+          }
+        });
       </script>
     </div>
   </div>
