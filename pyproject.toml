@@ -1,0 +1,54 @@
+[tool.poetry]
+name = "chalkboard-ocr-classification-kit"
+version = "0.1.0"
+description = "Chalkboard-OCR-Classification-Kit"
+authors = ["ProudRykar <proudrykar@mail.ru>"]
+license = "MIT"
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.dev-dependencies]
+isort = "^6.0.0"
+flake8 = "^7.1.2"
+black = "^25.1.0"
+pre-commit = "^4.1.0"
+icecream = "^2.1.4"
+mypy = "^1.15.0"
+
+[tool.mypy]
+disable_error_code = ["no-redef", "import-not-found", "import-untyped", "attr-defined"]
+
+[tool.black]
+line-length = 80
+skip-string-normalization = false
+
+[tool.isort]
+profile = "black"
+default_section = "THIRDPARTY"
+balanced_wrapping = true
+known_first_party = "src"
+line_length = 80
+lines_after_imports = 2
+lines_between_sections = 1
+multi_line_output = 3
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+skip = ["env", ".env", ".env.example", "migrations/"]
+
+[tool.flake8]
+ignore = ["D203", "E501"]
+exclude = [".git", "__pycache__", "__init__.py", "docs/"]
+max-complexity = 18
+max-line-length = 80
+
+[tool.poetry.group.docs.dependencies]
+mkdocs = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
