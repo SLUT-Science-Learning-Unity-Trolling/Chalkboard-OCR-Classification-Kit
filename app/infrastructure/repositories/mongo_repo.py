@@ -3,7 +3,7 @@ from typing import Any, List, Optional, Tuple, Type
 from motor.motor_asyncio import AsyncIOMotorCollection
 from pydantic import BaseModel
 
-from app.repositories.__abc_repo__ import RepositoryInterface
+from app.infrastructure.repositories.__abc_repo__ import RepositoryInterface
 
 
 class MongoRepo(RepositoryInterface):
