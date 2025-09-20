@@ -9,6 +9,8 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"
+motor = "^3.7.1"
+pydantic = "^2.11.9"
 
 [tool.poetry.group.docs]
 optional = true
