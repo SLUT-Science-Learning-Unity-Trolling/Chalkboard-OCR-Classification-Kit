@@ -50,6 +50,8 @@ max-line-length = 80
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "*"
+mkdocs-material = "^9.6.20"
+mkdocs-glightbox = "^0.5.1"
 
 [build-system]
 requires = ["poetry-core"]

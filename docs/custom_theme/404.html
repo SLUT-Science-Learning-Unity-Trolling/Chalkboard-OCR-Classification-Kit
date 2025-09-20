@@ -1,0 +1,21 @@
+{% extends "main.html" %}
+
+{% block content %}
+  <div class="md-content md-content--404" style="text-align: center; padding: 2rem;">
+    <div class="mdx-content" markdown>
+			<div># 404 - Страница не найдена</div>
+			<img src="/rat.gif" alt="404 Animation" style="max-width: 300px; margin: 1rem auto; display: block; cursor: pointer;" onclick="playSound();">
+      К сожалению, запрашиваемая страница не существует. Возможно, вы ввели неверный адрес или страница была удалена.
+			<audio id="clickSound" src="free_bird.mp3" preload="auto"></audio>
+
+      <script>
+        function playSound() {
+          var sound = document.getElementById("clickSound");
+          sound.play().catch(function(error) {
+            console.error("Ошибка воспроизведения звука:", error);
+          });
+        }
+      </script>
+    </div>
+  </div>
+{% endblock %}
