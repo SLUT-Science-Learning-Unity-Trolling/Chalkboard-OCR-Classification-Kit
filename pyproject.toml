@@ -11,6 +11,7 @@ package-mode = false
 python = "^3.11"
 motor = "^3.7.1"
 pydantic = "^2.11.9"
+punq = "^0.7.0"
 
 [tool.poetry.group.docs]
 optional = true
