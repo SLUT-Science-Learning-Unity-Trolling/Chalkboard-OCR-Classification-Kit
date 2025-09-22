@@ -1,73 +1,111 @@
-from typing import Any, List, Tuple, Type, TypeVar
+from typing import Any, Generic, List, Tuple, Type, TypeVar
 
 from pydantic import BaseModel
 
 from app.infrastructure.gateways.mongo import MongoGateway
-from app.infrastructure.repositories.__abc_repo__ import RepositoryInterface
 
 
-T = TypeVar("T", bound=BaseModel)
+"""
+Цикл жизни (Для понимания как это работает):
+    1. Клиент -> JSON: Клиент отправляет данные в формате JSON через HTTP-запрос.
+    2. API -> DTO: API (FastAPI) валидирует JSON с помощью Pydantic и создаёт DTO.
+    3. Сервис -> DE: Сервисный слой преобразует DTO в Domain Entity и выполняет бизнес-логику.
+
+    4. Репозиторий -> ODM -> База:
+        Репозиторий преобразует DE в ODM-модель (или напрямую использует DE, если ODM поддерживает).
+        ODM валидирует и сохраняет данные в MongoDB.
+
+    5. Чтение из базы ->→ DE:
+        Репозиторий через ODM извлекает документ из MongoDB.
+        ODM преобразует документ в ODM-модель.
+        Репозиторий конвертирует ODM-модель в DE.
+
+    6. Сервис -> API: Сервис возвращает DE после выполнения бизнес-логики.
+    7. API -> DTO -> JSON -> Клиент: API преобразует DE в DTO (Pydantic-модель), сериализует его в JSON и отправляет клиенту.
+"""
+
+TDomain = TypeVar("TDomain")  # Объект бизнес логики (Domain Entity)
+TDTO = TypeVar(
+    "TDTO", bound=BaseModel
+)  # DTO модель, создаваемая репозиторием на основе объекта бизнес логики (TDomain)
 
 
-class MongoRepo(RepositoryInterface):
-    """Реализация репозитория для работы с MongoDB
+class MongoRepo(Generic[TDomain, TDTO]):
+    """
+    Универсальный репозиторий для MongoDB.
 
-    Использует библиотеку pymongo для синхронного взаимодействия с MongoDB через MongoGateway.
-    Pydantic нужен для строгой валидации данных.
+    Использует DTO (Pydantic) для валидации и сериализации,
+    возвращает объекты Domain Entity.
 
     Args:
-        gateway (MongoGateway): Гейтвей для доступа к MongoDB.
-        collection_name (str): Имя коллекции.
-        model (Type[BaseModel]): Pydantic-модель для валидации данных.
+        gateway (MongoGateway): Гейтвей для доступа к MongoDB
+        collection_name (str): Имя коллекции
+        dto_model (Type[TDTO]): Pydantic-модель для валидации данных
+        to_domain (Type[TDomain]): Конструктор для Domain Entity
     """
 
     def __init__(
         self,
         gateway: MongoGateway,
         collection_name: str,
-        model: Type[T],
+        dto_model: Type[TDTO],
+        to_domain: Type[TDomain],
     ) -> None:
         self._gw = gateway
         self.collection_name = collection_name
-        self.model = model
+        self.dto_model = dto_model
+        self.to_domain = to_domain
 
-    async def get_one(self, query: dict[str, Any]) -> T | None:
-        cl = self._gw.get_collection(self.collection_name)
-        document = await cl.find_one(query)
-        return self.model(**document) if document else None
+    async def get_one(self, query: dict[str, Any]) -> TDomain | None:
+        cl = await self._gw.get_collection(self.collection_name)
+        doc = await cl.find_one(query)
+        if doc:
+            dto = self.dto_model(**doc)
+            return self.to_domain(**dto.model_dump())
+        return None
 
-    async def get_all(self, query: dict[str, Any]) -> List[T]:
-        cl = self._gw.get_collection(self.collection_name)
+    async def get_all(self, query: dict[str, Any]) -> List[TDomain]:
+        cl = await self._gw.get_collection(self.collection_name)
         cursor = cl.find(query)
-        documents = [self.model(**doc) async for doc in cursor]
-        return documents
+        results = []
+        async for doc in cursor:
+            dto = self.dto_model(**doc)
+            results.append(self.to_domain(**dto.model_dump()))
+        return results
 
-    async def add(self, document: dict[str, Any]) -> T:
-        cl = self._gw.get_collection(self.collection_name)
-        validated_data = self.model(**document).model_dump(exclude_unset=True)
-        result = await cl.insert_one(validated_data)
-        fetched_document = await cl.find_one({"_id": result.inserted_id})
-        return self.model(**fetched_document)
+    async def add(self, entity: TDomain) -> TDomain:
+        cl = await self._gw.get_collection(self.collection_name)
+        dto = self.dto_model(**entity.__dict__)
+        result = await cl.insert_one(dto.model_dump(exclude_unset=True))
+        inserted_doc = await cl.find_one({"_id": result.inserted_id})
+        inserted_dto = self.dto_model(**inserted_doc)
+        return self.to_domain(**inserted_dto.model_dump())
 
-    async def get_or_create(self, document: dict[str, Any]) -> Tuple[T, bool]:
-        cl = self._gw.get_collection(self.collection_name)
-        validated_data = self.model(**document).model_dump(exclude_unset=True)
-
+    async def get_or_create(self, entity: TDomain) -> Tuple[TDomain, bool]:
+        cl = await self._gw.get_collection(self.collection_name)
+        dto = self.dto_model(**entity.__dict__)
         result = await cl.update_one(
-            validated_data, {"$setOnInsert": validated_data}, upsert=True
+            dto.model_dump(exclude_unset=True),
+            {"$setOnInsert": dto.model_dump(exclude_unset=True)},
+            upsert=True,
         )
-
         created = result.upserted_id is not None
-        fetched_document = await cl.find_one(validated_data)
-        return self.model(**fetched_document), created
+        fetched_doc = await cl.find_one(dto.model_dump(exclude_unset=True))
+        fetched_dto = self.dto_model(**fetched_doc)
+        return self.to_domain(**fetched_dto.model_dump()), created
 
-    async def update(
-        self, query: dict[str, Any], update_data: dict[str, Any]
-    ) -> T:
-        cl = self._gw.get_collection(self.collection_name)
-        filtered_update_data = {
-            k: v for k, v in update_data.items() if v is not None
+    async def update(self, query: dict[str, Any], entity: TDomain) -> TDomain:
+        cl = await self._gw.get_collection(self.collection_name)
+        dto = self.dto_model(**entity.__dict__)
+        filtered_data = {
+            k: v for k, v in dto.model_dump().items() if v is not None
         }
-        await cl.update_one(query, {"$set": filtered_update_data})
-        updated_document = await cl.find_one(query)
-        return self.model(**updated_document)
+        await cl.update_one(query, {"$set": filtered_data})
+        updated_doc = await cl.find_one(query)
+        updated_dto = self.dto_model(**updated_doc)
+        return self.to_domain(**updated_dto.model_dump())
+
+    async def delete(self, query: dict[str, Any]) -> bool:
+        cl = await self._gw.get_collection(self.collection_name)
+        result = await cl.find_one_and_delete(query)
+        return result is not None
