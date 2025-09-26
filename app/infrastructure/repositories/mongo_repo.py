@@ -102,6 +102,8 @@ class MongoRepo(Generic[TDomain, TDTO]):
         }
         await cl.update_one(query, {"$set": filtered_data})
         updated_doc = await cl.find_one(query)
+        if updated_doc is None:
+            raise ValueError(f"No document found for query: {query}")
         updated_dto = self.dto_model(**updated_doc)
         return self.to_domain(**updated_dto.model_dump())
 

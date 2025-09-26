@@ -16,7 +16,7 @@ class UserService:
             )
 
         user_model = User(
-            _id=user["_id"],
+            id=user["_id"],
             username=user["username"],
             email=user["email"],
         )

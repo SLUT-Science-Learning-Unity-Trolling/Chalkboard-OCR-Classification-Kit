@@ -210,3 +210,4 @@ __marimo__/
 docker-compose.yml
 redis.data/
 redis.conf/
+.benchmarks/
