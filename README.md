@@ -1,1 +1,1 @@
-# COCK-Chalkboard-OCR-Classification-Kit
+# Chalkboard-OCR-Classification-Kit
