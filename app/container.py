@@ -22,13 +22,8 @@ async def user_endpoint(request):
 def build_container() -> Container:
     container = Container()
 
-    # Регистрация MongoGateway
-    container.register(
-        MongoGateway,
-        instance=MongoGateway(uri="mongodb://0.0.0.0:27017", db_name="test"),
-    )
+    container.register(MongoGateway, instance=MongoGateway())
 
-    # Регистрация MongoRepo
     container.register(
         MongoRepo,
         instance=MongoRepo(
@@ -39,24 +34,19 @@ def build_container() -> Container:
         ),
     )
 
-    # Регистрация UserService
     container.register(
         UserService,
         factory=lambda: UserService(repository=container.resolve(MongoRepo)),
     )
 
-    # Создание Starlette-приложения
     app = Starlette(
         debug=True,
         routes=[
             Route("/user", user_endpoint, methods=["POST"]),
         ],
     )
-    app.state.container = (
-        container  # Сохранение контейнера в состоянии приложения
-    )
+    app.state.container = container
 
-    # Регистрация приложения
     container.register(Starlette, instance=app)
 
     return container

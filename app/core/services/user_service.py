@@ -1,4 +1,5 @@
 from app.core.models.user import User
+from app.errors.user import UserCreationError
 from app.infrastructure.repositories.__abc_repo__ import RepositoryInterface
 
 
@@ -7,17 +8,25 @@ class UserService:
         self._repo = repository
 
     async def create_user(self, username: str, email: str) -> User:
-        await self._repo.add({"username": username, "email": email})
+        """
+        Создает нового пользователя.
 
-        user = await self._repo.get_one({"email": email})
+        Args:
+            username: Имя пользователя
+            email: Email пользователя
+
+        Returns:
+            User: Созданный пользователь
+
+        Raises:
+            ValueError: Если пользователь не был создан
+        """
+
+        user_data = {"username": username, "email": email}
+
+        user = await self._repo.add(user_data)
+
         if user is None:
-            raise ValueError(
-                f"User with email={email} not found after creation"
-            )
+            raise UserCreationError(f"Failed to create user with email={email}")
 
-        user_model = User(
-            id=user["_id"],
-            username=user["username"],
-            email=user["email"],
-        )
-        return user_model
+        return user

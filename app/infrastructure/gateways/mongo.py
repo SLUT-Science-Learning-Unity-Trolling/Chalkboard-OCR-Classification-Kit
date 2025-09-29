@@ -1,20 +1,41 @@
+from typing import Optional
+
 from pymongo import AsyncMongoClient
+
+from app.config import Config
 
 
 class MongoGateway:
-    def __init__(
-        self, uri: str = "mongodb://localhost:27017", db_name: str = "db"
-    ) -> None:
-        self.client = AsyncMongoClient(uri)
-        self.db = self.client[db_name]
+    def __init__(self):
+        self._uri = Config.DATABASE_URL
+        self._database = Config.DATABASE_NAME
+        self._username = Config.DATABASE_USER
+        self._password = Config.DATABASE_PASSWORD
+        self._client: Optional[AsyncMongoClient] = None
 
-    async def get_connection(self):
-        """Создание асинхронного коннекшена."""
-        return await self.client.aconnect()
+        if not self._uri:
+            raise ValueError("DATABASE_URL is not set in configuration")
+
+    async def connect(self) -> None:
+        """Устанавливает соединение с MongoDB."""
+        try:
+            self._client = AsyncMongoClient(self._uri)
+            await self._client.admin.command("ping")
+        except Exception as e:
+            raise ConnectionError(f"Failed to connect to MongoDB: {str(e)}")
+
+    async def get_database(self):
+        """Возвращает объект базы данных."""
+        if not self._client:
+            await self.connect()
+        return self._client[self._database]
+
+    async def get_collection(self, name: str):
+        """Возвращает коллекцию по имени."""
+        db = await self.get_database()
+        return db[name]
 
     async def close(self):
         """Закрывает соединение с MongoDB."""
-        await self.client.close()
-
-    async def get_collection(self, collection_name: str):
-        return self.db[collection_name]
+        if self._client:
+            self._client.close()

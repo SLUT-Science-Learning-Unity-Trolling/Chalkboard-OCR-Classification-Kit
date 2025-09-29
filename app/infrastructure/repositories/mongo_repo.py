@@ -1,4 +1,5 @@
 from typing import Any, Generic, List, Tuple, Type, TypeVar
+from uuid import uuid4
 
 from pydantic import BaseModel
 
@@ -73,13 +74,17 @@ class MongoRepo(Generic[TDomain, TDTO]):
             results.append(self.to_domain(**dto.model_dump()))
         return results
 
-    async def add(self, entity: TDomain) -> TDomain:
+    async def add(self, data: dict[str, Any]) -> TDomain:
+        """Добавляет новый документ в коллекцию."""
         cl = await self._gw.get_collection(self.collection_name)
-        dto = self.dto_model(**entity.__dict__)
+
+        if "_id" not in data:
+            data["_id"] = str(uuid4())
+
+        dto = self.dto_model(**data)
         result = await cl.insert_one(dto.model_dump(exclude_unset=True))
         inserted_doc = await cl.find_one({"_id": result.inserted_id})
-        inserted_dto = self.dto_model(**inserted_doc)
-        return self.to_domain(**inserted_dto.model_dump())
+        return self.to_domain(**inserted_doc)
 
     async def get_or_create(self, entity: TDomain) -> Tuple[TDomain, bool]:
         cl = await self._gw.get_collection(self.collection_name)

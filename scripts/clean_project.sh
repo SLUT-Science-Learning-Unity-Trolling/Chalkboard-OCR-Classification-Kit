@@ -30,6 +30,7 @@ TARGETS=(
   ".tox"
   ".eggs"
   "*.pyc"
+  ".benchmarks"
 )
 
 echo ">>> Очистка мусора в Python-проекте"

@@ -1,6 +1,7 @@
 site_name: Chalkboard OCR Classification Kit
 site_description: Документация проекта Chalkboard-OCR-Classification-Kit
 site_author: ProudRykar
+
 theme:
   custom_dir: docs/custom_theme
   name: material
@@ -23,28 +24,39 @@ theme:
       toggle:
         icon: material/white-balance-sunny
         name: Включить светлую тему
+
 nav:
   - Home: index.md
-  - Core: [in_work.md]
-  - Errors: [in_work.md]
-  - Models: [in_work.md]
-  - Schema: [in_work.md]
-  - Scripts: [in_work.md]
-  - Services: [in_work.md]
-  - Utils: [in_work.md]
+  - Core:
+      - Models:
+          - User: core/models/user.md
+      - Services:
+          - UserService: core/services/user_service.md
+  - Errors:
+      - User Errors: errors/user.md
+  - Schema:
+      - UserDTO: schema/user_dto.md
+  - Scripts:
+      - Clean Project: scripts/clean_project.md
+  - Utils: []
   - Repositories:
-    - RepositoryInterface: repositories/abc_repo.md
-    - MongoRepo: repositories/mongo_repo.md
-  - Tests: [in_work.md]
-  - Graphs: diagrams/diagrams.md
+      - RepositoryInterface: repositories/abc_repo.md
+      - MongoRepo: repositories/mongo_repo.md
+  - Tests: []
+  - Graphs:
+      - Overview: diagrams/diagrams.md
+      - Business Logic Diagram: diagrams/business_logic_diagram.png
+      - Tech Architecture Diagram: diagrams/tech_architecture_diagram.png
+
 plugins:
-  - search  # Если ещё не добавлен, для поиска
-  - glightbox  # Плагин для lightbox
+  - search
+  - glightbox
+
 markdown_extensions:
   - admonition
   - codehilite
   - toc:
       permalink: true
-  - attr_list  # Для поддержки классов в изображениях
-  - md_in_html  # Для HTML в Markdown (если нужно)
-  - pymdownx.blocks.caption  # Для подписей под изображениями (опционально)
+  - attr_list
+  - md_in_html
+  - pymdownx.blocks.caption
