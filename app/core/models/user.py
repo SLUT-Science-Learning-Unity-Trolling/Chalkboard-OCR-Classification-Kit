@@ -16,12 +16,7 @@ class User:
     _id: Union[str, UUID]
     username: str
     email: str
-
-    def __post_init__(self):
-        if len(self.username) < 3:
-            raise ValueError("Username must be at least 3 characters long")
-        if "@" not in self.email:
-            raise ValueError("Invalid email format")
+    password_hash: str
 
     @property
     def id(self) -> str:

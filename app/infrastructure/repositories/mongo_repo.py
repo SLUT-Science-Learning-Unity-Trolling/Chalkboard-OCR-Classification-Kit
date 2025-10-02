@@ -62,7 +62,9 @@ class MongoRepo(Generic[TDomain, TDTO]):
         doc = await cl.find_one(query)
         if doc:
             dto = self.dto_model(**doc)
-            return self.to_domain(**dto.model_dump())
+            return self.to_domain(
+                _id=doc.get("_id"), **dto.model_dump(exclude_unset=True)  # type: ignore
+            )
         return None
 
     async def get_all(self, query: dict[str, Any]) -> List[TDomain]:

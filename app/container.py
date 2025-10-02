@@ -4,16 +4,26 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 
 from app.core.models.user import User
+from app.core.services.security_service import SecurityService
 from app.core.services.user_service import UserService
 from app.infrastructure.gateways.mongo import MongoGateway
 from app.infrastructure.repositories.mongo_repo import MongoRepo
-from app.schema.user_dto import UserDTO
+from app.schema.user_dto import MongoUserDTO
 
 
 async def user_endpoint(request):
     container = request.app.state.container
     user_service = container.resolve(UserService)
-    user = await user_service.create_user("testuser", "test@example.com")
+
+    data = await request.json()
+
+    user = await user_service.create_user(
+        data["username"],
+        data["email"],
+        data["password"],
+        data["password_repeat"],
+    )
+
     return JSONResponse(
         {"id": str(user.id), "username": user.username, "email": user.email}
     )
@@ -22,21 +32,26 @@ async def user_endpoint(request):
 def build_container() -> Container:
     container = Container()
 
-    container.register(MongoGateway, instance=MongoGateway())
+    container.register(MongoGateway, factory=lambda: MongoGateway())
 
     container.register(
         MongoRepo,
-        instance=MongoRepo(
+        factory=lambda: MongoRepo(
             gateway=container.resolve(MongoGateway),
             collection_name="users",
-            dto_model=UserDTO,
+            dto_model=MongoUserDTO,
             to_domain=User,
         ),
     )
 
+    container.register(SecurityService, factory=lambda: SecurityService())
+
     container.register(
         UserService,
-        factory=lambda: UserService(repository=container.resolve(MongoRepo)),
+        factory=lambda: UserService(
+            repository=container.resolve(MongoRepo),
+            security=container.resolve(SecurityService),
+        ),
     )
 
     app = Starlette(
