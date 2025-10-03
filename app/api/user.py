@@ -1,9 +1,11 @@
 from litestar import post
+from litestar.dto import DataclassDTO
 from litestar.exceptions import HTTPException
-from litestar.params import Parameter
-from litestar.response import Response
 from litestar.status_codes import HTTP_201_CREATED, HTTP_400_BAD_REQUEST
+from punq import Container
 
+from app.core.models.user import User
+from app.core.services.auth_service import AuthService
 from app.core.services.user_service import UserService
 from app.errors.auth import (
     EmailAlreadyTaken,
@@ -11,33 +13,30 @@ from app.errors.auth import (
     PasswordDontMatch,
 )
 from app.errors.security import PasswordValidationError
-from app.errors.user import UserCreationError
-from app.schema.user_dto import UserDTO
+from app.schema.user_dto import UserCreateDTO, UserDTO, UserLoginDTO
 
 
-@post("/users", status_code=HTTP_201_CREATED)
+@post(
+    "/users/create",
+    status_code=HTTP_201_CREATED,
+    dto=DataclassDTO[UserCreateDTO],
+    return_dto=DataclassDTO[UserDTO],
+)
 async def create_user(
-    username: str = Parameter(description="Имя пользователя", min_length=3),
-    email: str = Parameter(description="Email", pattern=r"[^@]+@[^@]+\.[^@]+"),
-    password: str = Parameter(description="Пароль", min_length=3),
-    repeat_password: str = Parameter(
-        description="Повторите пароль", min_length=3
-    ),
-    user_service: UserService = Parameter(description="Сервис пользователей"),
-) -> Response[UserDTO]:
+    data: UserCreateDTO,
+    container: Container,
+) -> UserDTO:
+    """Эндпоинт создания пользователя."""
+    user_service = container.resolve(UserService)
     try:
-        user = await user_service.create_user(
-            username=username,
-            email=email,
-            password=password,
-            repeat_password=repeat_password,
+        user: User = await user_service.create_user(
+            username=data.username,
+            email=data.email,
+            password=data.password,
+            repeat_password=data.repeat_password,
         )
-        return Response(
-            content=UserDTO(
-                id=user.id, username=user.username, email=user.email
-            ),
-            status_code=HTTP_201_CREATED,
-        )
+        return UserDTO.fromrow(user.__dict__)
+
     except (
         PasswordDontMatch,
         PasswordValidationError,
@@ -45,10 +44,26 @@ async def create_user(
         EmailAlreadyTaken,
     ) as e:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e))
-    except UserCreationError:
-        raise HTTPException(
-            status_code=500, detail="Не удалось создать пользователя"
+
+
+@post(
+    "/auth/login",
+    status_code=HTTP_201_CREATED,
+    dto=DataclassDTO[UserLoginDTO],
+    return_dto=DataclassDTO[UserDTO],
+)
+async def auth_user(
+    data: UserLoginDTO,
+    container: Container,
+) -> UserDTO:
+    """Эндпоинт для авторизации пользователя."""
+    auth_service = container.resolve(AuthService)
+    try:
+        user = await auth_service.auth_existing_user(
+            email=data.email, password=data.password
         )
+        return UserDTO(id=user.id, username=user.username, email=user.email)
+
     except Exception as e:
         print(f"Unexpected error: {str(e)}")
         raise HTTPException(

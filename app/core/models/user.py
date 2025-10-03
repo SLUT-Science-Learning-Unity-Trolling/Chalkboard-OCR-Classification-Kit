@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from typing import Union
-from uuid import UUID
+
+from bson import ObjectId
 
 
 @dataclass
@@ -13,7 +13,7 @@ class User:
         email: Email пользователя
     """
 
-    _id: Union[str, UUID]
+    _id: ObjectId
     username: str
     email: str
     password_hash: str

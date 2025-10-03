@@ -1,42 +1,49 @@
 from abc import ABC, abstractmethod
-from typing import Any, Generic, List, Tuple, TypeVar
+from typing import Any
+
+from app.infrastructure.interfaces.db import DBGatewayInterface
 
 
-T = TypeVar("T")
+class RepositoryInterface(ABC):
+    """Базовый репозиторий для работы с с БД."""
 
+    def __init__(self, gateway: DBGatewayInterface) -> None:
+        """Конструктор.
 
-class RepositoryInterface(ABC, Generic[T]):
-    """Абстрактный generic-интерфейс для репозиториев."""
-
-    @abstractmethod
-    async def get_one(self, query: dict[str, Any]) -> T | None:
-        """Ищет и возвращает один объект по заданному запросу."""
-        raise NotImplementedError
-
-    @abstractmethod
-    async def get_all(self, query: dict[str, Any]) -> List[T]:
-        """Возвращает список всех объектов, соответствующих запросу."""
-        raise NotImplementedError
+        Args:
+            gateway (DBGateway): Гейт к бд.
+        """
+        self.__gw = gateway
 
     @abstractmethod
-    async def add(self, entity: T) -> T:
-        """Создаёт новый объект в хранилище."""
-        raise NotImplementedError
+    async def add(self, data: dict[str, Any]) -> Any:
+        """Добавление нового документа/таблицы.
 
-    @abstractmethod
-    async def get_or_create(self, entity: T) -> Tuple[T, bool]:
-        """Ищет объект по критериям или создаёт новый.
-
-        Возвращает кортеж (объект, создан ли новый).
+        Returns:
+            Any: ID нового объекта
         """
         raise NotImplementedError
 
     @abstractmethod
-    async def update(self, query: dict[str, Any], entity: T) -> T:
-        """Обновляет существующий объект по заданному запросу."""
+    async def get_one(self, query: dict[str, Any]) -> dict[str, Any]:
+        """Получение одного объекта."""
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_many(
+        self, query: dict[str, Any], limit: int
+    ) -> list[dict[str, Any]]:
+        """Получение нескольких объектов."""
+        raise NotImplementedError
+
+    @abstractmethod
+    async def update(
+        self, query: dict[str, Any], update_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Обновление объекта."""
         raise NotImplementedError
 
     @abstractmethod
     async def delete(self, query: dict[str, Any]) -> bool:
-        """Удаляет объект по заданному запросу."""
+        """Удаление объекта."""
         raise NotImplementedError

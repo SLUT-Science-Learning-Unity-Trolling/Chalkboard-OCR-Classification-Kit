@@ -7,6 +7,8 @@ load_dotenv()
 
 
 class Config:
+    """Класс конфигурации приложения."""
+
     DATABASE_HOST = os.getenv("DATABASE_HOST", "localhost")
     DATABASE_PORT = os.getenv("DATABASE_PORT", "27017")
     DATABASE_USER = os.getenv("DATABASE_USER")

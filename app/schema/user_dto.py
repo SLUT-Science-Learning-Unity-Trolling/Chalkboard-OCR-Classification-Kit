@@ -1,22 +1,39 @@
-from uuid import uuid4
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import Any
 
-from pydantic import BaseModel, EmailStr, Field
 
+@dataclass
+class UserCreateDTO:
+    """Данные для создания пользователя."""
 
-class UserCreateDTO(BaseModel):
     username: str
-    email: EmailStr
+    email: str
     password: str
+    repeat_password: str
 
 
-class MongoUserDTO(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid4()))
+@dataclass
+class UserDTO:
+    """Данные о пользователе, возвращаемые пользователю."""
+
+    id: str
     username: str
-    email: EmailStr
-    password_hash: str
+    email: str
+
+    @classmethod
+    def fromrow(cls, row: dict[str, Any]) -> UserDTO:
+        """Создает экземпляр класса из словаря."""
+        return cls(
+            id=str(row["_id"]),
+            username=row["username"],
+            email=row["email"],
+        )
 
 
-class UserDTO(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid4()))
-    username: str
-    email: EmailStr
+@dataclass
+class UserLoginDTO:
+    """Данные для авторизации пользователя."""
+
+    email: str
+    password: str
