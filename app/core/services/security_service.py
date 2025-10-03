@@ -7,8 +7,8 @@ from ... import config
 
 class SecurityService:
 
-    min_length = config.Config.PASSWORD_MIN_LENGTH
-    spec_symbols = config.Config.PASSWORD_SPEC_SYMBOLS
+    min_length = config.Config.PASSWORD_MIN_LENGTH  # Мерзость
+    spec_symbols = config.Config.PASSWORD_SPEC_SYMBOLS  # Отвратительность
 
     def __init__(self):
         pass
