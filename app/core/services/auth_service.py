@@ -56,7 +56,7 @@ class AuthService:
         token = jam.gen_jwt_token(payload)
 
         user_dto = UserDTO(
-            id=str(user["_id"]),  # ✅ здесь важно str
+            id=str(user["_id"]),
             username=user["username"],
             email=user["email"],
         )
