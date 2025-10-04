@@ -4,13 +4,13 @@ from bson import ObjectId
 from pymongo.asynchronous.collection import AsyncCollection
 
 from app.adapters.interfaces.db import DBGatewayInterface
-from app.adapters.repositories.__abc_repo__ import RepositoryInterface
+from app.adapters.repositories.abc_repo import RepositoryInterface
 
 
 """
 Цикл жизни (Для понимания как это работает):
     1. Клиент -> JSON: Клиент отправляет данные в формате JSON через HTTP-запрос.
-    2. API -> DTO: API (FastAPI) валидирует JSON с помощью Pydantic и создаёт DTO.
+    2. API -> DTO: API (FastAPI) валидирует JSON и создаёт DTO.
     3. Сервис -> DE: Сервисный слой преобразует DTO в Domain Entity и выполняет бизнес-логику.
 
     4. Репозиторий -> ODM -> База:
@@ -23,7 +23,7 @@ from app.adapters.repositories.__abc_repo__ import RepositoryInterface
         Репозиторий конвертирует ODM-модель в DE.
 
     6. Сервис -> API: Сервис возвращает DE после выполнения бизнес-логики.
-    7. API -> DTO -> JSON -> Клиент: API преобразует DE в DTO (Pydantic-модель), сериализует его в JSON и отправляет клиенту.
+    7. API -> DTO -> JSON -> Клиент: API преобразует DE в DTO, сериализует его в JSON и отправляет клиенту.
 """
 
 

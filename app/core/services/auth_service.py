@@ -6,8 +6,8 @@ from litestar import Request
 from app.core.services.security_service import SecurityService
 from app.core.services.user_service import UserService
 from app.core.errors.auth import InvalidEmailOrPassword
-from app.adapters.repositories.__abc_repo__ import RepositoryInterface
-from app.jam import jam
+from app.adapters.repositories.abc_repo import RepositoryInterface
+from app.config import jam
 from app.config import config
 from app.api.schemas.user_dto import UserDTO
 

@@ -1,7 +1,7 @@
 import os
 
 from dotenv import load_dotenv
-
+from jam import Jam
 
 load_dotenv()
 
@@ -47,3 +47,14 @@ class Config:
 
 
 config: Config = Config()
+
+
+"""Конфиг Jam для аутентификации."""
+jam_config = {
+    "auth_type": "jwt",
+    "secret_key": config.JWT_SECRET_KEY,
+    "alg": "HS256",
+    "expire": config.JWT_EXPIRE_TIME,
+}
+
+jam = Jam(config=jam_config)

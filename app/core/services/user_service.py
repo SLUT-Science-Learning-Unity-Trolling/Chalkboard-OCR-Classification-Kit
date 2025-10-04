@@ -12,7 +12,7 @@ from app.core.errors.auth import (
 )
 from app.core.errors.security import PasswordValidationError
 from app.core.errors.user import UserCreationError
-from app.adapters.repositories.__abc_repo__ import RepositoryInterface
+from app.adapters.repositories.abc_repo import RepositoryInterface
 
 
 class UserService:
