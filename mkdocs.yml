@@ -80,6 +80,8 @@ plugins:
             merge_init_into_class: true
             show_category_heading: true
             filters: ["!^_"]
+  - wiki-publish:
+      wiki_repo: "https://github.com/SLUT-Science-Learning-Unity-Trolling/Chalkboard-OCR-Classification-Kit.wiki.git"
 
 markdown_extensions:
   - admonition
@@ -91,5 +93,5 @@ markdown_extensions:
   - pymdownx.blocks.caption
 
 watch:
-  - app  # Для live-reload при изменениях в коде
+  - app
   - docs

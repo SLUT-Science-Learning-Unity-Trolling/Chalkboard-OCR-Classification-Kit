@@ -43,6 +43,7 @@ pytest-benchmark = "^5.1.0"
 pre-commit = "^4.1.0"
 icecream = "^2.1.4"
 mypy = "^1.15.0"
+wiki-publish = { path = "./plugins/wiki_publish", develop = true }
 
 [tool.ruff]
 target-version = "py39"
@@ -108,3 +109,6 @@ mkdocs-glightbox = "^0.5.1"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[[tool.poetry.packages]]
+include = "plugins"

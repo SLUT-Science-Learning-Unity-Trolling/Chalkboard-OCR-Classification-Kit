@@ -1950,17 +1950,18 @@ jupyter = ["ipywidgets (>=7.5.1,<9)"]
 
 [[package]]
 name = "rich-click"
-version = "1.9.1"
+version = "1.9.2"
 description = "Format click help output nicely with rich"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "rich_click-1.9.1-py3-none-any.whl", hash = "sha256:ea6114a9e081b7d68cc07b315070398f806f01bb0e0c49da56f129e672877817"},
-    {file = "rich_click-1.9.1.tar.gz", hash = "sha256:4f2620589d7287f86265432e6a909de4f281de909fe68d8c835fbba49265d268"},
+    {file = "rich_click-1.9.2-py3-none-any.whl", hash = "sha256:5079dad67ed7df434a9ec1f20b1d62d831e58c78740026f968ce3d3b861f01a0"},
+    {file = "rich_click-1.9.2.tar.gz", hash = "sha256:1c4212f05561be0cac6a9c1743e1ebcd4fe1fb1e311f9f672abfada3be649db6"},
 ]
 
 [package.dependencies]
 click = ">=8"
+colorama = {version = "*", markers = "platform_system == \"Windows\""}
 rich = ">=12"
 
 [package.extras]
@@ -2377,7 +2378,23 @@ files = [
     {file = "websockets-15.0.1.tar.gz", hash = "sha256:82544de02076bafba038ce055ee6412d68da13ab47f0c60cab827346de828dee"},
 ]
 
+[[package]]
+name = "wiki-publish"
+version = "0.2.0"
+description = "MkDocs Wiki auto-pushing in GitHub project wiki"
+optional = false
+python-versions = "^3.11"
+files = []
+develop = true
+
+[package.dependencies]
+mkdocs = "^1.4.0"
+
+[package.source]
+type = "directory"
+url = "plugins/wiki_publish"
+
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "f9156d6c7a849fa4fa081882a0f26db04c90e05ec5127d41b0c6b223fdfa1fea"
+content-hash = "86db5b78392e0a443c46a5498bb49ddb8daf4dc1040a8cdca2744a06d3f24fe2"
