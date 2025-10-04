@@ -1,3 +1,5 @@
+from typing import Any
+from bson import ObjectId
 from email_validator import EmailNotValidError, validate_email
 
 from app import config
@@ -64,7 +66,7 @@ class UserService:
 
         user_data = {
             "username": username,
-            "email": email,
+            "email": email.lower(),
             "password_hash": password_hash,
         }
         try:
@@ -76,3 +78,8 @@ class UserService:
         user = await self._repo.get_one({"_id": id})
 
         return User(**user)
+
+    async def get_user_by_id(self, user_id: str) -> dict[str, Any]:
+        """Возвращает пользователя по ID."""
+        user = await self._repo.get_one({"_id": ObjectId(user_id)})
+        return user

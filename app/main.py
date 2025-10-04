@@ -2,7 +2,8 @@ from litestar import Litestar
 from litestar.openapi import OpenAPIConfig
 
 from app.api.health import db_health_check, server_health_check
-from app.api.user import auth_user, create_user
+from app.api.misc import get_me
+from app.api.user import auth_user, create_user, logout_user
 from app.container import build_container
 
 
@@ -19,6 +20,8 @@ app = Litestar(
         db_health_check,
         create_user,
         auth_user,
+        logout_user,
+        get_me,
     ],
     dependencies={"container": build_container},
     openapi_config=openapi_config,

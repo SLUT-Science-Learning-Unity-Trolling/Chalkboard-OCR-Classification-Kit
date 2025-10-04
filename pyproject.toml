@@ -23,6 +23,12 @@ python-magic = "^0.4.27"
 strawberry-graphql = {extras = ["debug-server"], version = "^0.282.0"}
 ruff = "^0.13.3"
 
+[tool.jam]
+auth_type = "jwt"
+alg = "HS256"
+secret_key = "SECRET"
+expire = 1209600
+
 [tool.poetry.group.docs]
 optional = true
 

@@ -1,0 +1,9 @@
+from app.jam import jam
+
+# допустим, token получили из ответа сервера
+payload = jam.verify_jwt_token(
+    token="eyJhbGciOiAiSFMyNTYiLCAidHlwIjogImp3dCJ9.eyJqdGkiOiAiYTlmMzUzOWQtODMxYy00YWY1LWI1MjYtZWY4ODYxMDNkYmZiIiwgImV4cCI6IDE3NjA4MDg2NDUuNjA1OTEzLCAiaWF0IjogMTc1OTU5OTA0NS42MDU5MjEsICJkYXRhIjogeyJ1c2VyX2lkIjogIjY4ZTE1NTI1MDVjYjgyZmZhNDMxNGJiOSIsICJlbWFpbCI6ICJleGFtcGxlQG1haWwucnUiLCAidXNlcm5hbWUiOiAiXHUwNDI1XHUwNDQzXHUwNDM5XHUwNDFmXHUwNDM4XHUwNDNmXHUwNDM4XHUwNDQxXHUwNDRjXHUwNDNhXHUwNDMwIn19.fe8j9P8oOTfhMW4niXCCFCPkyO64wBAMqmww7QGuDT4",
+    check_exp=True,
+    check_list=False,
+)
+print(payload)

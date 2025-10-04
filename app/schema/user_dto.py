@@ -25,7 +25,7 @@ class UserDTO:
     def fromrow(cls, row: dict[str, Any]) -> UserDTO:
         """Создает экземпляр класса из словаря."""
         return cls(
-            id=str(row["_id"]),
+            id=str(row.get("_id") or row.get("id")),
             username=row["username"],
             email=row["email"],
         )
