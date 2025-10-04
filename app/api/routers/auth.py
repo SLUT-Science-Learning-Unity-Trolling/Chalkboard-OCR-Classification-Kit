@@ -9,6 +9,7 @@ from litestar.status_codes import (
 from litestar.di import Provide
 from punq import Container
 
+from app.core.errors.auth import InvalidEmailOrPassword
 from app.core.services.auth_service import AuthService
 
 from app.api.schemas.user_dto import UserDTO, UserLoginDTO
@@ -26,9 +27,11 @@ async def auth_user(
 ) -> Response:
     """Эндпоинт для авторизации пользователя с установкой JWT в cookie."""
     auth_service = container.resolve(AuthService)
+
     try:
         user, token = await auth_service.auth_existing_user(
-            email=data.email, password=data.password
+            identifier=data.identifier,
+            password=data.password,
         )
 
         response = Response({"user": UserDTO.fromrow(user.__dict__)})
@@ -42,8 +45,9 @@ async def auth_user(
         )
         return response
 
-    except Exception as e:
+    except InvalidEmailOrPassword as e:
         print(f"Unexpected error: {str(e)}")
+
         raise HTTPException(
             status_code=500, detail="Internal server error occurred"
         )
@@ -59,6 +63,7 @@ async def logout_user() -> Response:
         key="token",
         path="/",
     )
+
     return response
 
 

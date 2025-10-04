@@ -6,6 +6,7 @@ from app.core.services.security_service import SecurityService
 from app.core.services.user_service import UserService
 from app.adapters.gateways.mongo import MongoGateway
 from app.adapters.repositories.mongo_repo import MongoRepo
+from app.core.services.validation_service import ValidationService
 
 
 def build_container() -> Container:
@@ -23,12 +24,14 @@ def build_container() -> Container:
     )
 
     container.register(SecurityService, factory=lambda: SecurityService())
+    container.register(ValidationService, factory=lambda: ValidationService())
 
     container.register(
         UserService,
         factory=lambda: UserService(
             repository=container.resolve(MongoRepo),
             security=container.resolve(SecurityService),
+            validator=container.resolve(ValidationService),
         ),
     )
 

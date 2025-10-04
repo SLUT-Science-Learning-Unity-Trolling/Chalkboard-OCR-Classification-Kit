@@ -1,6 +1,6 @@
 from typing import Optional
 from punq import Container
-
+import re
 
 from litestar import Request
 from app.core.services.security_service import SecurityService
@@ -31,10 +31,15 @@ class AuthService:
         pass
 
     async def auth_existing_user(
-        self, email: str, password: str
+        self, identifier: str, password: str
     ) -> tuple[UserDTO, str]:
-        """Аутентификация существующего пользователя."""
-        user = await self._repo.get_one({"email": email.lower()})
+        """Аутентификация существующего пользователя по email или username."""
+        if re.match(r"[^@]+@[^@]+\.[^@]+", identifier):
+            query = {"email": identifier.lower()}
+        else:
+            query = {"username": identifier}
+
+        user = await self._repo.get_one(query)
         if not user:
             raise InvalidEmailOrPassword
 

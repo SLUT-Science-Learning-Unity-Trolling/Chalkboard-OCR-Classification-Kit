@@ -35,5 +35,5 @@ class UserDTO:
 class UserLoginDTO:
     """Данные для авторизации пользователя."""
 
-    email: str
+    identifier: str
     password: str

@@ -13,8 +13,12 @@ from app.core.errors.auth import (
     EmailAlreadyTaken,
     EmailValidationError,
     PasswordDontMatch,
+    UsernameAlreadyTaken,
 )
-from app.core.errors.security import PasswordValidationError
+from app.core.errors.validation import (
+    PasswordValidationError,
+    UsernameValidationError,
+)
 from app.api.schemas.user_dto import UserCreateDTO, UserDTO
 
 
@@ -43,6 +47,8 @@ async def create_user(
         PasswordDontMatch,
         PasswordValidationError,
         EmailValidationError,
+        UsernameValidationError,
         EmailAlreadyTaken,
+        UsernameAlreadyTaken,
     ) as e:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e))

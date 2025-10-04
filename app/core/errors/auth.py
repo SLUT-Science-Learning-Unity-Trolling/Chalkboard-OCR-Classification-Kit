@@ -40,6 +40,20 @@ class EmailAlreadyTaken(Exception):
         self.message: str | Exception = message
 
 
+class UsernameAlreadyTaken(Exception):
+    """Исключение, возникающее при зарегистрированном email."""
+
+    def __init__(
+        self, message: str | Exception = "Данный логин уже зарегистрирован."
+    ) -> None:
+        """Конструктор.
+
+        Args:
+            message (str | Exception, optional): Сообщение об ошибке".
+        """
+        self.message: str | Exception = message
+
+
 class InvalidEmailOrPassword(Exception):
     """Исключение, возникающее при невалидном логине или пароле."""
 

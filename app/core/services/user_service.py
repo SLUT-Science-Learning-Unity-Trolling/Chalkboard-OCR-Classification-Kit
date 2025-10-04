@@ -9,26 +9,36 @@ from app.core.errors.auth import (
     EmailAlreadyTaken,
     EmailValidationError,
     PasswordDontMatch,
+    UsernameAlreadyTaken,
 )
-from app.core.errors.security import PasswordValidationError
+from app.core.errors.validation import (
+    PasswordValidationError,
+    UsernameValidationError,
+)
 from app.core.errors.user import UserCreationError
 from app.adapters.repositories.abc_repo import RepositoryInterface
+from app.core.services.validation_service import ValidationService
 
 
 class UserService:
     """Сервис для работы с пользователями."""
 
     def __init__(
-        self, repository: RepositoryInterface, security: SecurityService
+        self,
+        repository: RepositoryInterface,
+        security: SecurityService,
+        validator: ValidationService,
     ) -> None:
         """Конструктор.
 
         Args:
             repository (RepositoryInterface): Репозиторий
             security (SecurityService): Секьюрити сервис
+            validator (ValidationService): Сервис валидации
         """
         self._repo = repository
         self._security = security
+        self._validator = validator
 
     async def create_user(
         self, username: str, email: str, password: str, repeat_password: str
@@ -50,11 +60,18 @@ class UserService:
         if password != repeat_password:
             raise PasswordDontMatch
 
-        if not await self._security.validate_password(password):
+        if not await self._validator.validate_password(password):
             raise PasswordValidationError
 
-        if await self._repo.get_one({"email": email}):
-            raise EmailAlreadyTaken
+        if not await self._validator.validate_username(username):
+            raise UsernameValidationError
+
+        existing_user = await self.does_user_exists(username, email)
+        if existing_user:
+            if existing_user.get("username") == username:
+                raise UsernameAlreadyTaken
+            if existing_user.get("email") == email.lower():
+                raise EmailAlreadyTaken
 
         try:
             validate_email(email, test_environment=config.Config.DEBUG)
@@ -80,6 +97,32 @@ class UserService:
         return User(**user)
 
     async def get_user_by_id(self, user_id: str) -> dict[str, Any]:
-        """Возвращает пользователя по ID."""
+        """Возвращает пользователя по ID.
+
+        Args:
+            user_id (str): ID пользователя
+
+        Returns:
+            dict[str, Any]: Пользователь
+        """
         user = await self._repo.get_one({"_id": ObjectId(user_id)})
+        return user
+
+    async def does_user_exists(
+        self, username: str, email: str
+    ) -> dict[str, Any] | None:
+        """Проверяет, существует ли пользователь по username или email.
+
+        Args:
+            username (str): Имя пользователя
+            email (str): Email пользователя
+
+        Returns:
+            dict[str, Any]: Пользователь
+        """
+        user = await self._repo.get_one({"username": username})
+        if user:
+            return user
+
+        user = await self._repo.get_one({"email": email.lower()})
         return user
