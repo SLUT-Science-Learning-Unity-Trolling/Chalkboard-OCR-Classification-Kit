@@ -3,8 +3,8 @@ from typing import Any
 from bson import ObjectId
 from pymongo.asynchronous.collection import AsyncCollection
 
-from app.infrastructure.interfaces.db import DBGatewayInterface
-from app.infrastructure.repositories.__abc_repo__ import RepositoryInterface
+from app.adapters.interfaces.db import DBGatewayInterface
+from app.adapters.repositories.__abc_repo__ import RepositoryInterface
 
 
 """

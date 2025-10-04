@@ -1,7 +1,7 @@
 from jam import utils
 
 from app import config
-from app.errors.security import PasswordValidationError
+from app.core.errors.security import PasswordValidationError
 
 
 class SecurityService:

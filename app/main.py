@@ -1,9 +1,9 @@
 from litestar import Litestar
 from litestar.openapi import OpenAPIConfig
 
-from app.api.health import db_health_check, server_health_check
-from app.api.misc import get_me
-from app.api.user import auth_user, create_user, logout_user
+from app.api.routers.health import db_health_check, server_health_check
+from app.api.routers.user import create_user
+from app.api.routers.auth import logout_user, get_me, auth_user
 from app.container import build_container
 
 

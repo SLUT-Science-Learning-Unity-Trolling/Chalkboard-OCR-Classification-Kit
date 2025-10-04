@@ -1,3 +1,5 @@
+# PYTHONPATH=. poetry run mkdocs serve
+
 site_name: Chalkboard OCR Classification Kit
 site_description: Документация проекта Chalkboard-OCR-Classification-Kit
 site_author: ProudRykar
@@ -26,31 +28,58 @@ theme:
         name: Включить светлую тему
 
 nav:
-  - Home: index.md
+  - Главная: index.md
   - Core:
-      - Models:
-          - User: core/models/user.md
+      - Domain:
+          - Models:
+              - User: core/domain/models/user.md
       - Services:
-          - UserService: core/services/user_service.md
-  - Errors:
-      - User Errors: errors/user.md
-  - Schema:
-      - UserDTO: schema/user_dto.md
-  - Scripts:
-      - Clean Project: scripts/clean_project.md
-  - Utils: []
-  - Repositories:
-      - RepositoryInterface: repositories/abc_repo.md
-      - MongoRepo: repositories/mongo_repo.md
-  - Tests: []
-  - Graphs:
-      - Overview: diagrams/diagrams.md
-      - Business Logic Diagram: diagrams/business_logic_diagram.png
-      - Tech Architecture Diagram: diagrams/tech_architecture_diagram.png
+          - User Service: core/services/user_service.md
+          - Auth Service: core/services/auth_service.md
+          - Security Service: core/services/security_service.md  # Исправил опечатку
+      - Errors:
+          - Auth Errors: core/errors/auth.md
+          - User Errors: core/errors/user.md
+          - Security Errors: core/errors/security.md
+  - API:
+      - Routers:
+          - Auth: api/routers/auth.md
+          - User: api/routers/user.md
+          - Health: api/routers/health.md
+      - Schemas:
+          - User DTO: api/schemas/user_dto.md  # Исправил shemas → schemas
+  - Adapters:  # Временно, переименуй в Adapters
+      - Gateways:
+          - Mongo Gateway: adapters/gateways/mongo.md
+      - Repositories:
+          - Abstract Repository: adapters/repositories/abc_repo.md
+          - Mongo Repository: adapters/repositories/mongo_repo.md
+      - Interfaces:
+          - Database Interface: adapters/interfaces/db.md
+  - Main: main.md
+  - Container: container.md
+  - Тесты: tests/in_work.md  # Новый раздел
+  - Скрипты: scripts/clean_project.md  # Или scripts.md, если объединишь
+  - Диаграммы:
+      - Обзор: diagrams/diagrams.md
+      - Бизнес-логика: diagrams/business_logic_diagram.png
+      - Техническая архитектура: diagrams/tech_architecture_diagram.png
 
 plugins:
   - search
   - glightbox
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: 
+            - app
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            merge_init_into_class: true
+            show_category_heading: true
+            filters: ["!^_"]
 
 markdown_extensions:
   - admonition
@@ -60,3 +89,7 @@ markdown_extensions:
   - attr_list
   - md_in_html
   - pymdownx.blocks.caption
+
+watch:
+  - app  # Для live-reload при изменениях в коде
+  - docs

@@ -5,11 +5,11 @@ from punq import Container
 from litestar import Request
 from app.core.services.security_service import SecurityService
 from app.core.services.user_service import UserService
-from app.errors.auth import InvalidEmailOrPassword
-from app.infrastructure.repositories.__abc_repo__ import RepositoryInterface
+from app.core.errors.auth import InvalidEmailOrPassword
+from app.adapters.repositories.__abc_repo__ import RepositoryInterface
 from app.jam import jam
 from app.config import config
-from app.schema.user_dto import UserDTO
+from app.api.schemas.user_dto import UserDTO
 
 
 class AuthService:

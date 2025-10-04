@@ -4,8 +4,8 @@ from app.config import Config
 from app.core.services.auth_service import AuthService
 from app.core.services.security_service import SecurityService
 from app.core.services.user_service import UserService
-from app.infrastructure.gateways.mongo import MongoGateway
-from app.infrastructure.repositories.mongo_repo import MongoRepo
+from app.adapters.gateways.mongo import MongoGateway
+from app.adapters.repositories.mongo_repo import MongoRepo
 
 
 def build_container() -> Container:

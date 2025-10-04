@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from app.infrastructure.interfaces.db import DBGatewayInterface
+from app.adapters.interfaces.db import DBGatewayInterface
 
 
 class RepositoryInterface(ABC):

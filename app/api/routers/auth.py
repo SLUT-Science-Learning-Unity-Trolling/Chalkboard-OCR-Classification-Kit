@@ -1,53 +1,17 @@
-from litestar import Response, post
+from typing import Any
+from litestar import Response, get, post
 from litestar.dto import DataclassDTO
 from litestar.exceptions import HTTPException
 from litestar.status_codes import (
     HTTP_201_CREATED,
-    HTTP_400_BAD_REQUEST,
     HTTP_200_OK,
 )
+from litestar.di import Provide
 from punq import Container
 
-from app.core.models.user import User
 from app.core.services.auth_service import AuthService
-from app.core.services.user_service import UserService
-from app.errors.auth import (
-    EmailAlreadyTaken,
-    EmailValidationError,
-    PasswordDontMatch,
-)
-from app.errors.security import PasswordValidationError
-from app.schema.user_dto import UserCreateDTO, UserDTO, UserLoginDTO
 
-
-@post(
-    "/users/create",
-    status_code=HTTP_201_CREATED,
-    dto=DataclassDTO[UserCreateDTO],
-    return_dto=DataclassDTO[UserDTO],
-)
-async def create_user(
-    data: UserCreateDTO,
-    container: Container,
-) -> UserDTO:
-    """Эндпоинт создания пользователя."""
-    user_service = container.resolve(UserService)
-    try:
-        user: User = await user_service.create_user(
-            username=data.username,
-            email=data.email,
-            password=data.password,
-            repeat_password=data.repeat_password,
-        )
-        return UserDTO.fromrow(user.__dict__)
-
-    except (
-        PasswordDontMatch,
-        PasswordValidationError,
-        EmailValidationError,
-        EmailAlreadyTaken,
-    ) as e:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e))
+from app.api.schemas.user_dto import UserDTO, UserLoginDTO
 
 
 @post(
@@ -96,3 +60,17 @@ async def logout_user() -> Response:
         path="/",
     )
     return response
+
+
+@get(
+    "/me", dependencies={"current_user": Provide(AuthService.get_current_user)}
+)
+async def get_me(current_user: UserDTO | None) -> dict[str, Any]:
+    """Эндпоинт возвращает данные текущего пользователя."""
+    if current_user:
+        return {"success": True, "user": current_user}
+
+    return {
+        "success": False,
+        "message": "Пользователь не зарегистрирован или не найден в системе",
+    }

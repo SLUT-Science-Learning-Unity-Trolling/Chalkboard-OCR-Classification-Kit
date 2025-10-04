@@ -3,16 +3,16 @@ from bson import ObjectId
 from email_validator import EmailNotValidError, validate_email
 
 from app import config
-from app.core.models.user import User
+from app.core.domain.models.user import User
 from app.core.services.security_service import SecurityService
-from app.errors.auth import (
+from app.core.errors.auth import (
     EmailAlreadyTaken,
     EmailValidationError,
     PasswordDontMatch,
 )
-from app.errors.security import PasswordValidationError
-from app.errors.user import UserCreationError
-from app.infrastructure.repositories.__abc_repo__ import RepositoryInterface
+from app.core.errors.security import PasswordValidationError
+from app.core.errors.user import UserCreationError
+from app.adapters.repositories.__abc_repo__ import RepositoryInterface
 
 
 class UserService:

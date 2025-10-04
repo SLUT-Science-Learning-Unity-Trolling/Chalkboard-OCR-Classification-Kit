@@ -22,6 +22,10 @@ email-validator = "^2.3.0"
 python-magic = "^0.4.27"
 strawberry-graphql = {extras = ["debug-server"], version = "^0.282.0"}
 ruff = "^0.13.3"
+mkdocs-material = "^9.6.21"
+mkdocs-glightbox = "^0.5.1"
+mkdocstrings = "^0.30.1"
+mkdocstrings-python = "^1.18.2"
 
 [tool.jam]
 auth_type = "jwt"
