@@ -1,7 +1,7 @@
 from litestar import Litestar
 from litestar.openapi import OpenAPIConfig
 
-from app.api.health import health_check
+from app.api.health import db_health_check, server_health_check
 from app.api.user import auth_user, create_user
 from app.container import build_container
 
@@ -14,7 +14,12 @@ openapi_config = OpenAPIConfig(
 )
 
 app = Litestar(
-    route_handlers=[create_user, health_check, auth_user],
+    route_handlers=[
+        server_health_check,
+        db_health_check,
+        create_user,
+        auth_user,
+    ],
     dependencies={"container": build_container},
     openapi_config=openapi_config,
     debug=True,
