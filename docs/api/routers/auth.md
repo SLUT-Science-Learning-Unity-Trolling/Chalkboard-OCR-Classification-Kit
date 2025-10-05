@@ -1,5 +1,7 @@
-## auth_user:
+## def auth_user:
 #### Эндпоинт для авторизации пользователя с установкой JWT в cookie.
+#### Маршруты:
+- `@post( "/auth/login", status_code=HTTP_201_CREATED, dto=DataclassDTO[UserLoginDTO], return_dto=DataclassDTO[UserDTO], )`
 
 #### Аргументы
 | Аргумент | Тип | Описание |
@@ -13,6 +15,11 @@
 | `Response` | Ответ с JWT в cookie |
 
 ```python
+@post(
+    "/auth/login",
+    status_code=HTTP_201_CREATED,
+    dto=DataclassDTO[UserLoginDTO],
+    return_dto=DataclassDTO[UserDTO],
 )
 async def auth_user(
     data: UserLoginDTO,
@@ -54,9 +61,11 @@ async def auth_user(
         )
 ```
 ---
-## logout_user:
+## def logout_user:
 #### Эндпоинт выхода из профиля.
 Удаляет JWT из cookie, разлогинивая пользователя.
+#### Маршруты:
+- `@post("/auth/logout", status_code=HTTP_200_OK)`
 
 ```python
 @post("/auth/logout", status_code=HTTP_200_OK)
@@ -73,10 +82,14 @@ async def logout_user() -> Response:
     return response
 ```
 ---
-## get_me:
+## def get_me:
 #### Эндпоинт возвращает данные текущего пользователя.
+#### Маршруты:
+- `@get( "/me", dependencies={"current_user": Provide(AuthService.get_current_user)} )`
 
 ```python
+@get(
+    "/me", dependencies={"current_user": Provide(AuthService.get_current_user)}
 )
 async def get_me(current_user: UserDTO | None) -> dict[str, Any]:
     """Эндпоинт возвращает данные текущего пользователя."""

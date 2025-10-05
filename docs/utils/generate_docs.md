@@ -1,4 +1,4 @@
-## parse_google_docstring:
+## def parse_google_docstring:
 #### Парсит Google-style докстринг в структуру словаря.
 
 #### Аргументы
@@ -77,47 +77,7 @@ def parse_google_docstring(docstring: str) -> dict[str, Any]:
     return sections
 ```
 ---
-## get_function_body:
-#### Извлекает полный исходный код функции или метода, включая сигнатуру и декораторы.
-
-#### Аргументы
-| Аргумент | Тип | Описание |
-|----------|-----|----------|
-| `file_path` | `Path` | Путь к файлу с исходным кодом. |
-| `node` | `ast.AST` | AST-узел функции или метода. |
-
-#### Возвращает
-| Тип | Описание |
-|-----|----------|
-| `str` | Текст исходного кода функции. |
-
-```python
-def get_function_body(
-    file_path: Path, node: ast.FunctionDef | ast.AsyncFunctionDef
-) -> str:
-    """Извлекает полный исходный код функции или метода, включая сигнатуру и декораторы.
-
-    Args:
-        file_path (Path): Путь к файлу с исходным кодом.
-        node (ast.AST): AST-узел функции или метода.
-
-    Returns:
-        str: Текст исходного кода функции.
-    """
-    with open(file_path, encoding="utf-8") as f:
-        lines = f.readlines()
-    start_line = node.lineno - 1
-    end_line = node.end_lineno
-
-    if hasattr(node, "decorator_list") and node.decorator_list:
-        decorator_start = node.lineno - 1 - len(node.decorator_list)
-        start_line = decorator_start
-
-    body = "".join(lines[start_line:end_line]).rstrip()
-    return body
-```
----
-## extract_docstrings:
+## def extract_docstrings:
 #### Извлекает докстринги и тела функций/методов из Python-файла.
 
 #### Аргументы
@@ -176,7 +136,60 @@ def extract_docstrings(file_path: Path) -> dict[Any, Any]:
     return docstrings
 ```
 ---
-## format_function_md:
+## def get_function_body:
+#### Извлекает полный исходный код функции или метода, включая сигнатуру и декораторы.
+
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `file_path` | `Path` | Путь к файлу с исходным кодом. |
+| `node` | `ast.AST` | AST-узел функции или метода. |
+
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `str` | Текст исходного кода функции. |
+
+```python
+def get_function_body(
+    file_path: Path, node: ast.FunctionDef | ast.AsyncFunctionDef
+) -> str:
+    """Извлекает полный исходный код функции или метода, включая сигнатуру и декораторы.
+
+    Args:
+        file_path (Path): Путь к файлу с исходным кодом.
+        node (ast.AST): AST-узел функции или метода.
+
+    Returns:
+        str: Текст исходного кода функции.
+    """
+    with open(file_path, encoding="utf-8") as f:
+        lines = f.readlines()
+
+    start_line = node.lineno - 1
+    if hasattr(node, "decorator_list") and node.decorator_list:
+        decorator_start = min(
+            decorator.lineno - 1 for decorator in node.decorator_list
+        )
+        start_line = decorator_start
+        while start_line > 0 and lines[start_line - 1].strip().startswith("@"):
+            start_line -= 1
+
+    end_line: int = node.end_lineno or start_line + 1
+
+    while end_line < len(lines):
+        line = lines[end_line].strip()
+        if line and line.startswith("@"):
+            break
+        if line and not line.startswith(" "):
+            break
+        end_line += 1
+
+    body = "".join(lines[start_line:end_line]).rstrip()
+    return body
+```
+---
+## def format_function_md:
 #### Форматирует функцию или метод в Markdown с таблицами аргументов, возвращаемых значений и исключений.
 
 #### Аргументы
@@ -206,7 +219,10 @@ def format_function_md(
         str: Сформатированный Markdown.
     """
     display_name = name.replace("__init__", "init")
-    md = [f"## {display_name}:"]
+    # Determine if the function is async by checking the body
+    is_async = doc["body"].strip().startswith("async def")
+    prefix = "async def" if is_async else "def"
+    md = [f"## {prefix} {display_name}:"]
 
     if doc["first_line"]:
         md.append(f"#### {doc['first_line']}")
@@ -214,6 +230,25 @@ def format_function_md(
     if doc["rest_description"]:
         md.append(doc["rest_description"])
 
+    # HTTP route
+    if "@" in doc["body"]:
+        route_lines = []
+        current_route = []
+        for line in doc["body"].splitlines():
+            line_strip = line.strip()
+            if line_strip.startswith(("@get", "@post", "@put", "@delete")) or (
+                current_route and line_strip
+            ):
+                current_route.append(line_strip)
+                if line_strip.endswith(")"):
+                    route_lines.append(" ".join(current_route))
+                    current_route = []
+        if route_lines:
+            md.append("#### Маршруты:")
+            for route in route_lines:
+                md.append(f"- `{route}`")
+
+    # Аргументы
     if doc["args"]:
         md.append("\n#### Аргументы")
         md.append("| Аргумент | Тип | Описание |")
@@ -224,7 +259,6 @@ def format_function_md(
                 if len(parts) == 2:
                     name_type = parts[0].strip()
                     desc = parts[1].strip()
-
                     if "(" in name_type and ")" in name_type:
                         arg_name = name_type.split("(")[0].strip()
                         arg_type = (
@@ -237,6 +271,7 @@ def format_function_md(
                 else:
                     md.append(f"| `{arg.strip()}` | | |")
 
+    # Возвращаемое значение
     if doc["returns"] and doc["returns"].strip().lower() != "none":
         md.append("\n#### Возвращает")
         md.append("| Тип | Описание |")
@@ -251,6 +286,7 @@ def format_function_md(
                 else:
                     md.append(f"| `{ret.strip()}` | |")
 
+    # Исключения
     if doc["raises"]:
         md.append("\n#### Исключения")
         md.append("| Исключение | Описание |")
@@ -272,7 +308,7 @@ def format_function_md(
     return "\n".join(md)
 ```
 ---
-## write_md:
+## def write_md:
 #### Генерирует Markdown-файл для модуля или класса.
 
 #### Аргументы
@@ -336,7 +372,7 @@ def write_md(file_path: Path, docstrings: dict[str, Any]) -> str:
     return "\n".join(md_content)
 ```
 ---
-## create_docs:
+## def create_docs:
 #### Создает Markdown-документацию для всех Python-файлов из списка директорий.
 
 #### Аргументы
@@ -372,7 +408,7 @@ def create_docs(src_dirs: list[Path], dst_dir: Path) -> None:
                         f.write(md_content)
 ```
 ---
-## rename_wiki_files_by_header:
+## def rename_wiki_files_by_header:
 #### Переименовывает .md файлы в .wiki_tmp на основании второй строки исходных .py файлов.
 Если вторая строка файла начинается с # , используется её содержимое (без решётки и пробелов) как новое имя Markdown-файла.
 Если такого заголовка нет, имя остаётся прежним.
@@ -399,13 +435,10 @@ def rename_wiki_files_by_header(local_wiki_dir: Path, docs_dir: Path) -> None:
                 continue
 
             md_path = Path(root) / file
-            # Путь относительно wiki_tmp
             rel_path = md_path.relative_to(local_wiki_dir)
-            # Ищем соответствующий .py в docs/ — без добавления "docs/" ещё раз
             py_source = docs_dir / rel_path
             py_source = py_source.with_suffix(".py")
 
-            # 🟢 Добавляем проверку всех исходных директорий, если не найдено
             if not py_source.exists():
                 for src_dir in PROJECT_DIRS:
                     possible_py = src_dir / rel_path
@@ -415,7 +448,7 @@ def rename_wiki_files_by_header(local_wiki_dir: Path, docs_dir: Path) -> None:
                         break
 
             if not py_source.exists():
-                continue  # если так и не нашли — пропускаем
+                continue
 
             try:
                 with open(py_source, encoding="utf-8") as f:
@@ -438,7 +471,7 @@ def rename_wiki_files_by_header(local_wiki_dir: Path, docs_dir: Path) -> None:
                 print(f"[Wiki] Ошибка при обработке {md_path}: {e}")
 ```
 ---
-## push_to_wiki:
+## def push_to_wiki:
 #### Копирует Markdown-документы в локальный клон Wiki и пушит изменения в удаленный репозиторий.
 
 #### Аргументы

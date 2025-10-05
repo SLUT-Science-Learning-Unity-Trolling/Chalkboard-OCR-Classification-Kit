@@ -3,7 +3,7 @@
 **Базовый репозиторий для работы с с БД.**
 
 ---
-## init:
+## def init:
 #### Конструктор.
 
 #### Аргументы
@@ -21,7 +21,7 @@
         self.__gw = gateway
 ```
 ---
-## add:
+## def add:
 #### Добавление нового документа/таблицы.
 
 #### Возвращает
@@ -40,7 +40,7 @@
         raise NotImplementedError
 ```
 ---
-## get_one:
+## def get_one:
 #### Получение одного объекта.
 
 ```python
@@ -50,7 +50,7 @@
         raise NotImplementedError
 ```
 ---
-## get_many:
+## def get_many:
 #### Получение нескольких объектов.
 
 #### Аргументы
@@ -81,7 +81,7 @@
         raise NotImplementedError
 ```
 ---
-## update:
+## def update:
 #### Обновление объекта.
 
 #### Аргументы
@@ -112,7 +112,7 @@
         raise NotImplementedError
 ```
 ---
-## delete:
+## def delete:
 #### Удаление объекта.
 
 #### Аргументы

@@ -1,5 +1,7 @@
-## server_health_check:
+## def server_health_check:
 #### Проверка работы сервера.
+#### Маршруты:
+- `@get("/health/server", status_code=HTTP_200_OK)`
 
 #### Возвращает
 | Тип | Описание |
@@ -17,8 +19,10 @@ def server_health_check() -> JSONResponse:
     return JSONResponse({"status": "ok"})
 ```
 ---
-## db_health_check:
+## def db_health_check:
 #### Проверка работы сервера и подключения к MongoDB.
+#### Маршруты:
+- `@get("/health/db", status_code=HTTP_200_OK)`
 
 #### Возвращает
 | Тип | Описание |

@@ -2,6 +2,7 @@
 # Config
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from jam import Jam
@@ -52,6 +53,15 @@ class Config:
         "_",
         "-",
     ]
+
+    PROJECT_DIRS = [
+        Path("app"),
+        Path("tests"),
+    ]
+    DOCS_DIR = Path("docs")
+    SUPPORTED_EXT = [".py"]
+    WIKI_REPO = "https://github.com/SLUT-Science-Learning-Unity-Trolling/Chalkboard-OCR-Classification-Kit.wiki.git"
+    LOCAL_WIKI_DIR = Path(".wiki_tmp")
 
 
 config: Config = Config()

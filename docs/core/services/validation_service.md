@@ -3,7 +3,7 @@
 **Сервис валидации.**
 
 ---
-## init:
+## def init:
 #### Инциализация.
 
 #### Аргументы
@@ -21,7 +21,7 @@
         self.config = config
 ```
 ---
-## validate_password:
+## async def validate_password:
 #### Валидатор паролей, настройки берутся из конфига.
 
 #### Аргументы
@@ -82,7 +82,7 @@
         return True
 ```
 ---
-## validate_username:
+## async def validate_username:
 #### Проверка имени пользователя.
 Требования:
 - Минимальная длина: self.config.USERNAME_MIN_LENGTH

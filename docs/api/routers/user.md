@@ -1,5 +1,7 @@
-## create_user:
+## def create_user:
 #### Эндпоинт создания пользователя.
+#### Маршруты:
+- `@post( "/users/create", status_code=HTTP_201_CREATED, dto=DataclassDTO[UserCreateDTO], return_dto=DataclassDTO[UserDTO], )`
 
 #### Аргументы
 | Аргумент | Тип | Описание |
@@ -13,6 +15,11 @@
 | `UserDTO` | Данные пользователя |
 
 ```python
+@post(
+    "/users/create",
+    status_code=HTTP_201_CREATED,
+    dto=DataclassDTO[UserCreateDTO],
+    return_dto=DataclassDTO[UserDTO],
 )
 async def create_user(
     data: UserCreateDTO,

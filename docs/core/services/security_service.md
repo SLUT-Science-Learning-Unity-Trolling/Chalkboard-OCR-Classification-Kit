@@ -3,7 +3,7 @@
 **Секьюрити сервис для работы с сессиями и т.п.**
 
 ---
-## hash_password:
+## def hash_password:
 #### Функция хэширования пароля.
 
 #### Аргументы
@@ -29,7 +29,7 @@
         return utils.hash_password(password, salt_size=36)
 ```
 ---
-## serialize_hash:
+## def serialize_hash:
 #### Функция сериализации хэша пароля.
 
 #### Аргументы
@@ -57,7 +57,7 @@
         return utils.serialize_hash(salt, hash_)
 ```
 ---
-## deserialize_hash:
+## def deserialize_hash:
 #### Функция десериализации хэша пароля.
 
 #### Аргументы
@@ -83,7 +83,7 @@
         return utils.deserialize_hash(data)
 ```
 ---
-## verify_hash:
+## def verify_hash:
 #### Функция проверки хэша пароля.
 
 #### Аргументы

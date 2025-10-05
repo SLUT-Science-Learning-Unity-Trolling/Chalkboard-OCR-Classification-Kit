@@ -3,7 +3,7 @@
 **Класс для работы с MongoDB.**
 
 ---
-## init:
+## def init:
 #### Конструктор.
 
 #### Аргументы
@@ -44,7 +44,7 @@
             raise ValueError("DATABASE_URL is not set in configuration")
 ```
 ---
-## connect:
+## async def connect:
 #### Устанавливает соединение с MongoDB.
 
 ```python
@@ -57,7 +57,7 @@
             raise ConnectionError(f"Failed to connect to MongoDB: {str(e)}")
 ```
 ---
-## get_database:
+## async def get_database:
 #### Возвращает объект базы данных.
 
 ```python
@@ -68,7 +68,7 @@
         return self._client[self._database]  # type: ignore
 ```
 ---
-## get_collection:
+## async def get_collection:
 #### Возвращает коллекцию по имени.
 
 ```python
@@ -78,7 +78,7 @@
         return db[name]
 ```
 ---
-## close:
+## async def close:
 #### Закрывает соединение с MongoDB.
 
 ```python
