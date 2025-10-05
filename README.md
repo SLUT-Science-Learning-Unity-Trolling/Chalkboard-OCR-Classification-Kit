@@ -73,3 +73,16 @@ PYTHONPATH=. poetry run mkdocs serve
 ```bash
 pre-commit install
 ```
+
+## Генерация документации через плагин
+Для обычной генерации документации по докстрингам:
+
+```bash
+poetry run python app/utils/generate_docs.py
+```
+
+Для её генерации и пуша в wiki репозиторий проекта:
+
+```bash
+poetry run python app/utils/generate_docs.py --push
+```
