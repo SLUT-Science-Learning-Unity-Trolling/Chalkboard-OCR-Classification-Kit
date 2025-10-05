@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+# MongoRepo
+
 from typing import Any
 
 from bson import ObjectId
@@ -28,44 +31,53 @@ from app.adapters.repositories.abc_repo import RepositoryInterface
 
 
 class MongoRepo(RepositoryInterface):
-    """Репозиторий для работы с mongodb."""
+    """Асинхронный репозиторий для работы с MongoDB.
+
+    Репозиторий инкапсулирует работу с коллекцией MongoDB, предоставляя
+    CRUD операции для работы с документами.
+    """
 
     def __init__(
         self, gateway: DBGatewayInterface, collection_name: str
     ) -> None:
-        """Конструктор.
+        """Инициализация репозитория.
 
         Args:
-            gateway (DBGatewayInterface): Гейт подключения к бд
-            collection_name (str): Имя коллекции
+            gateway (DBGatewayInterface): Объект для работы с базой данных.
+            collection_name (str): Название коллекции MongoDB.
         """
         self.__gw = gateway
         self.collection_name = collection_name
 
     async def _init_collection(self) -> AsyncCollection:
+        """Получение асинхронного объекта коллекции.
+
+        Returns:
+            AsyncCollection: Асинхронная коллекция MongoDB.
+        """
         return await self.__gw.get_collection(self.collection_name)  # type: ignore
 
     async def add(self, data: dict[str, Any]) -> ObjectId:
-        """Добавление документа в БД.
+        """Добавляет новый документ в коллекцию.
 
         Args:
-            data (dict[str, Any]): Документ
+            data (dict[str, Any]): Словарь с данными документа.
 
         Returns:
-            ObjectId: ID нового документа
+            ObjectId: Уникальный идентификатор добавленного документа.
         """
         collection = await self._init_collection()
         result = await collection.insert_one(data)
         return result.inserted_id
 
     async def get_one(self, query: dict[str, Any]) -> dict[str, Any]:
-        """Получение конкретного объекта из БД.
+        """Получает один документ из коллекции по условию.
 
         Args:
-            query (dict[str, Any]): Поисковый запрос
+            query (dict[str, Any]): Словарь с фильтром поиска.
 
         Returns:
-            dict[str, Any]: Результат поиска
+            dict[str, Any] | None: Найденный документ или None, если не найден.
         """
         collection = await self._init_collection()
         result = await collection.find_one(query)
@@ -74,14 +86,14 @@ class MongoRepo(RepositoryInterface):
     async def get_many(
         self, query: dict[str, Any], limit: int = 10
     ) -> list[dict[str, Any]]:
-        """Получение N объектов из БД.
+        """Получает несколько документов из коллекции.
 
         Args:
-            query (dit[str, Any]): Поисковый запрос
-            limit (int): Кол-во объектов
+            query (dict[str, Any]): Словарь с фильтром поиска.
+            limit (int, optional): Максимальное количество документов. По умолчанию 10.
 
         Returns:
-            list[dict[str, Any]]: Результат поиска
+            list[dict[str, Any]]: Список найденных документов.
         """
         collection = await self._init_collection()
         result = collection.find(query).limit(limit)
@@ -90,14 +102,14 @@ class MongoRepo(RepositoryInterface):
     async def update(
         self, query: dict[str, Any], update_data: dict[str, Any]
     ) -> dict[str, Any]:
-        """Обновление документа.
+        """Обновляет один документ в коллекции.
 
         Args:
-            query (dict[str, Any]): Поисковый запрос
-            update_data (dict[str, Any]): Данные для обновления
+            query (dict[str, Any]): Словарь с фильтром поиска документа.
+            update_data (dict[str, Any]): Данные для обновления (например, {"$set": {...}}).
 
         Returns:
-            dict[str, Any]: Обновленный документ
+            dict[str, Any] | None: Обновленный документ или None, если документ не найден.
         """
         collection = await self._init_collection()
         result = await collection.find_one_and_update(
@@ -106,16 +118,16 @@ class MongoRepo(RepositoryInterface):
         return result
 
     async def delete(self, query: dict[str, Any]) -> bool:
-        """Удаление объекта.
+        """Удаляет один документ из коллекции.
 
         Args:
-            query (dict[str, Any]): Поисковый запрос
+            query (dict[str, Any]): Словарь с фильтром для удаления.
 
         Returns:
-            bool: Результат операции
+            bool: True, если документ был успешно удален, иначе False.
 
         Raises:
-            ValueError: При неудачной операции
+            ValueError: Если возникла ошибка при удалении документа.
         """
         try:
             collection = await self._init_collection()

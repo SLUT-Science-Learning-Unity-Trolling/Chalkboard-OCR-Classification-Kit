@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+# API_Auth
+
 from typing import Any
 from litestar import Response, get, post
 from litestar.dto import DataclassDTO
@@ -25,7 +28,15 @@ async def auth_user(
     data: UserLoginDTO,
     container: Container,
 ) -> Response:
-    """Эндпоинт для авторизации пользователя с установкой JWT в cookie."""
+    """Эндпоинт для авторизации пользователя с установкой JWT в cookie.
+
+    Args:
+        data (UserLoginDTO): Данные для авторизации пользователя
+        container (Container): Контейнер
+
+    Returns:
+        Response: Ответ с JWT в cookie
+    """
     auth_service = container.resolve(AuthService)
 
     try:

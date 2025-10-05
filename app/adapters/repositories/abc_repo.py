@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# RepositoryInterface
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -33,17 +35,40 @@ class RepositoryInterface(ABC):
     async def get_many(
         self, query: dict[str, Any], limit: int
     ) -> list[dict[str, Any]]:
-        """Получение нескольких объектов."""
+        """Получение нескольких объектов.
+
+        Args:
+            query (dict[str, Any]): Поисковый запрос
+            limit (int): Кол-во объектов
+
+        Returns:
+            list[dict[str, Any]]: Результат поиска
+        """
         raise NotImplementedError
 
     @abstractmethod
     async def update(
         self, query: dict[str, Any], update_data: dict[str, Any]
     ) -> dict[str, Any]:
-        """Обновление объекта."""
+        """Обновление объекта.
+
+        Args:
+            query (dict[str, Any]): Поисковый запрос
+            update_data (dict[str, Any]): Данные для обновления
+
+        Returns:
+            dict[str, Any]: Обновленный объект
+        """
         raise NotImplementedError
 
     @abstractmethod
     async def delete(self, query: dict[str, Any]) -> bool:
-        """Удаление объекта."""
+        """Удаление объекта.
+
+        Args:
+            query (dict[str, Any]): Поисковый запрос
+
+        Returns:
+            bool: Результат операции
+        """
         raise NotImplementedError

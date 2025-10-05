@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+# ValidationErrors
+
+
 class PasswordValidationError(Exception):
     """Исключение, возникающее при невалидном пароле."""
 

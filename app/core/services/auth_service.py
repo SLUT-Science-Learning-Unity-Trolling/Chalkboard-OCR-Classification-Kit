@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+# AuthService
+
 from typing import Optional
 from punq import Container
 import re
@@ -13,18 +16,21 @@ from app.api.schemas.user_dto import UserDTO
 
 
 class AuthService:
-    """Сервис для аутентификации пользователей."""
+    """Сервис для аутентификации пользователей.
+
+    Обрабатывает логин пользователей, проверку пароля и генерацию JWT-токенов.
+    """
 
     def __init__(
         self,
         repository: RepositoryInterface,
         security: SecurityService,
-    ):
-        """Конструктор.
+    ) -> None:
+        """Инициализация сервиса аутентификации.
 
         Args:
-            repository (RepositoryInterface): Репозиторий
-            security (SecurityService): Секьюрити сервис
+            repository (RepositoryInterface): Репозиторий пользователей.
+            security (SecurityService): Сервис для работы с хэшированием паролей.
         """
         self._repo = repository
         self._security = security
@@ -33,7 +39,21 @@ class AuthService:
     async def auth_existing_user(
         self, identifier: str, password: str
     ) -> tuple[UserDTO, str]:
-        """Аутентификация существующего пользователя по email или username."""
+        """Аутентификация существующего пользователя по email или username.
+
+        Проверяет существование пользователя, валидирует пароль и
+        генерирует JWT-токен для авторизации.
+
+        Args:
+            identifier (str): Email или имя пользователя (username).
+            password (str): Пароль пользователя.
+
+        Raises:
+            InvalidEmailOrPassword: Если пользователь не найден или пароль неверный.
+
+        Returns:
+            tuple[UserDTO, str]: DTO пользователя и JWT-токен.
+        """
         if re.match(r"[^@]+@[^@]+\.[^@]+", identifier):
             query = {"email": identifier.lower()}
         else:
@@ -72,7 +92,18 @@ class AuthService:
     async def get_current_user(
         request: Request, container: Container
     ) -> Optional[UserDTO]:
-        """Возвращает текущего пользователя или None, если не авторизован."""
+        """Возвращает текущего авторизованного пользователя.
+
+        Проверяет JWT-токен в cookies запроса, извлекает пользователя из базы
+        через UserService и возвращает его DTO.
+
+        Args:
+            request (Request): HTTP-запрос.
+            container (Container): Контейнер зависимостей для получения сервисов.
+
+        Returns:
+            Optional[UserDTO]: DTO текущего пользователя или None, если пользователь не авторизован.
+        """
         token = request.cookies.get("token")
         if not token:
             return None

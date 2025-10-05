@@ -31,6 +31,8 @@ TARGETS=(
   ".eggs"
   "*.pyc"
   ".benchmarks"
+  "site"
+  ".wiki_tmp"
 )
 
 echo ">>> Очистка мусора в Python-проекте"

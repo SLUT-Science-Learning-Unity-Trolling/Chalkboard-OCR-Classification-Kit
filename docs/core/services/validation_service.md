@@ -1,17 +1,19 @@
 ## Класс ValidationService
 
-**Серивис валидации.**
+**Сервис валидации.**
 
 ---
-### init
-**Конструктор.**
+## init:
+#### Инциализация.
 
-**Args:**
-- `config (Config)`: Конфиг
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `config` | `Config` | Конфиг |
 
 ```python
     def __init__(self, config=config.Config) -> None:  # type: ignore
-        """Конструктор.
+        """Инциализация.
 
         Args:
             config (Config): Конфиг
@@ -19,17 +21,23 @@
         self.config = config
 ```
 ---
-### validate_password
-**Валидатор паролей, настройки берутся из конфига.**
+## validate_password:
+#### Валидатор паролей, настройки берутся из конфига.
 
-**Args:**
-- `password (str)`: Пароль для валидации
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `password` | `str` | Пароль для валидации |
 
-**Returns:**
-- `bool: True, если пароль валиден`
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `bool` | True, если пароль валиден |
 
-**Exceptions:**
-- `PasswordValidationError: Ошибка при валидации пароля`
+#### Исключения
+| Исключение | Описание |
+|------------|----------|
+| `PasswordValidationError` | Ошибка при валидации пароля |
 
 ```python
     async def validate_password(self, password: str) -> bool:
@@ -74,26 +82,32 @@
         return True
 ```
 ---
-### validate_username
-**Проверка имени пользователя.**
+## validate_username:
+#### Проверка имени пользователя.
 Требования:
 - Минимальная длина: self.config.USERNAME_MIN_LENGTH
 - Максимальная длина: self.config.USERNAME_MAX_LENGTH
 - Разрешены только латинские буквы, цифры, символы _ и -
 
-**Args:**
-- `username (str)`: Имя пользователя
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `username` | `str` | Имя пользователя |
 
-**Returns:**
-- `bool: True, если имя пользователя валидно`
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `bool` | True, если имя пользователя валидно |
 
-**Exceptions:**
-- `UsernameValidationError: Ошибка при валидации имени`
+#### Исключения
+| Исключение | Описание |
+|------------|----------|
+| `UsernameValidationError` | Ошибка при валидации имени |
 
 ```python
     async def validate_username(self, username: str) -> bool:
         """Проверка имени пользователя.
-        
+
         Требования:
         - Минимальная длина: self.config.USERNAME_MIN_LENGTH
         - Максимальная длина: self.config.USERNAME_MAX_LENGTH

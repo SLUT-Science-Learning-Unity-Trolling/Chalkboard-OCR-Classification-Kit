@@ -1,5 +1,16 @@
-### auth_user
-**Эндпоинт для авторизации пользователя с установкой JWT в cookie.**
+## auth_user:
+#### Эндпоинт для авторизации пользователя с установкой JWT в cookie.
+
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `data` | `UserLoginDTO` | Данные для авторизации пользователя |
+| `container` | `Container` | Контейнер |
+
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `Response` | Ответ с JWT в cookie |
 
 ```python
 )
@@ -7,7 +18,15 @@ async def auth_user(
     data: UserLoginDTO,
     container: Container,
 ) -> Response:
-    """Эндпоинт для авторизации пользователя с установкой JWT в cookie."""
+    """Эндпоинт для авторизации пользователя с установкой JWT в cookie.
+
+    Args:
+        data (UserLoginDTO): Данные для авторизации пользователя
+        container (Container): Контейнер
+
+    Returns:
+        Response: Ответ с JWT в cookie
+    """
     auth_service = container.resolve(AuthService)
 
     try:
@@ -35,8 +54,8 @@ async def auth_user(
         )
 ```
 ---
-### logout_user
-**Эндпоинт выхода из профиля.**
+## logout_user:
+#### Эндпоинт выхода из профиля.
 Удаляет JWT из cookie, разлогинивая пользователя.
 
 ```python
@@ -54,8 +73,8 @@ async def logout_user() -> Response:
     return response
 ```
 ---
-### get_me
-**Эндпоинт возвращает данные текущего пользователя.**
+## get_me:
+#### Эндпоинт возвращает данные текущего пользователя.
 
 ```python
 )

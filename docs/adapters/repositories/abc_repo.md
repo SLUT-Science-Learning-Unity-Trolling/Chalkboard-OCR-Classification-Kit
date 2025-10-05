@@ -3,11 +3,13 @@
 **Базовый репозиторий для работы с с БД.**
 
 ---
-### init
-**Конструктор.**
+## init:
+#### Конструктор.
 
-**Args:**
-- `gateway (DBGateway)`: Гейт к бд.
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `gateway` | `DBGateway` | Гейт к бд. |
 
 ```python
     def __init__(self, gateway: DBGatewayInterface) -> None:
@@ -19,11 +21,13 @@
         self.__gw = gateway
 ```
 ---
-### add
-**Добавление нового документа/таблицы.**
+## add:
+#### Добавление нового документа/таблицы.
 
-**Returns:**
-- `Any: ID нового объекта`
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `Any` | ID нового объекта |
 
 ```python
     @abstractmethod
@@ -36,8 +40,8 @@
         raise NotImplementedError
 ```
 ---
-### get_one
-**Получение одного объекта.**
+## get_one:
+#### Получение одного объекта.
 
 ```python
     @abstractmethod
@@ -46,37 +50,92 @@
         raise NotImplementedError
 ```
 ---
-### get_many
-**Получение нескольких объектов.**
+## get_many:
+#### Получение нескольких объектов.
+
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `query` | `dict[str, Any]` | Поисковый запрос |
+| `limit` | `int` | Кол-во объектов |
+
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `list[dict[str, Any]]` | Результат поиска |
 
 ```python
     @abstractmethod
     async def get_many(
         self, query: dict[str, Any], limit: int
     ) -> list[dict[str, Any]]:
-        """Получение нескольких объектов."""
+        """Получение нескольких объектов.
+
+        Args:
+            query (dict[str, Any]): Поисковый запрос
+            limit (int): Кол-во объектов
+
+        Returns:
+            list[dict[str, Any]]: Результат поиска
+        """
         raise NotImplementedError
 ```
 ---
-### update
-**Обновление объекта.**
+## update:
+#### Обновление объекта.
+
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `query` | `dict[str, Any]` | Поисковый запрос |
+| `update_data` | `dict[str, Any]` | Данные для обновления |
+
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `dict[str, Any]` | Обновленный объект |
 
 ```python
     @abstractmethod
     async def update(
         self, query: dict[str, Any], update_data: dict[str, Any]
     ) -> dict[str, Any]:
-        """Обновление объекта."""
+        """Обновление объекта.
+
+        Args:
+            query (dict[str, Any]): Поисковый запрос
+            update_data (dict[str, Any]): Данные для обновления
+
+        Returns:
+            dict[str, Any]: Обновленный объект
+        """
         raise NotImplementedError
 ```
 ---
-### delete
-**Удаление объекта.**
+## delete:
+#### Удаление объекта.
+
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `query` | `dict[str, Any]` | Поисковый запрос |
+
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `bool` | Результат операции |
 
 ```python
     @abstractmethod
     async def delete(self, query: dict[str, Any]) -> bool:
-        """Удаление объекта."""
+        """Удаление объекта.
+
+        Args:
+            query (dict[str, Any]): Поисковый запрос
+
+        Returns:
+            bool: Результат операции
+        """
         raise NotImplementedError
 ```
 ---

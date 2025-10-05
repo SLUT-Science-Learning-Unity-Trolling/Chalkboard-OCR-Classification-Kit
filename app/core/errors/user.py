@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+# UserErrors
+
+
 class UserCreationError(Exception):
     """Исключение, возникающее при ошибке создания пользователя."""
 

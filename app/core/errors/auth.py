@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+# AuthErrors
+
+
 class PasswordDontMatch(Exception):
     """Исключение, возникающее при несовпадении паролей."""
 

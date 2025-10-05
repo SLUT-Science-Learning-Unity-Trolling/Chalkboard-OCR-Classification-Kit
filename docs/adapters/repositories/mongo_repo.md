@@ -1,134 +1,165 @@
 ## Класс MongoRepo
 
-**Репозиторий для работы с mongodb.**
+**Асинхронный репозиторий для работы с MongoDB.**
+Репозиторий инкапсулирует работу с коллекцией MongoDB, предоставляя
+CRUD операции для работы с документами.
 
 ---
-### init
-**Конструктор.**
+## init:
+#### Инициализация репозитория.
 
-**Args:**
-- `gateway (DBGatewayInterface)`: Гейт подключения к бд
-- `collection_name (str)`: Имя коллекции
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `gateway` | `DBGatewayInterface` | Объект для работы с базой данных. |
+| `collection_name` | `str` | Название коллекции MongoDB. |
 
 ```python
     def __init__(
         self, gateway: DBGatewayInterface, collection_name: str
     ) -> None:
-        """Конструктор.
+        """Инициализация репозитория.
 
         Args:
-            gateway (DBGatewayInterface): Гейт подключения к бд
-            collection_name (str): Имя коллекции
+            gateway (DBGatewayInterface): Объект для работы с базой данных.
+            collection_name (str): Название коллекции MongoDB.
         """
         self.__gw = gateway
         self.collection_name = collection_name
 ```
 ---
-### _init_collection
+## _init_collection:
+#### Получение асинхронного объекта коллекции.
+
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `AsyncCollection` | Асинхронная коллекция MongoDB. |
 
 ```python
     async def _init_collection(self) -> AsyncCollection:
+        """Получение асинхронного объекта коллекции.
+
+        Returns:
+            AsyncCollection: Асинхронная коллекция MongoDB.
+        """
         return await self.__gw.get_collection(self.collection_name)  # type: ignore
 ```
 ---
-### add
-**Добавление документа в БД.**
+## add:
+#### Добавляет новый документ в коллекцию.
 
-**Args:**
-- `data (dict[str, Any])`: Документ
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `data` | `dict[str, Any]` | Словарь с данными документа. |
 
-**Returns:**
-- `ObjectId: ID нового документа`
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `ObjectId` | Уникальный идентификатор добавленного документа. |
 
 ```python
     async def add(self, data: dict[str, Any]) -> ObjectId:
-        """Добавление документа в БД.
+        """Добавляет новый документ в коллекцию.
 
         Args:
-            data (dict[str, Any]): Документ
+            data (dict[str, Any]): Словарь с данными документа.
 
         Returns:
-            ObjectId: ID нового документа
+            ObjectId: Уникальный идентификатор добавленного документа.
         """
         collection = await self._init_collection()
         result = await collection.insert_one(data)
         return result.inserted_id
 ```
 ---
-### get_one
-**Получение конкретного объекта из БД.**
+## get_one:
+#### Получает один документ из коллекции по условию.
 
-**Args:**
-- `query (dict[str, Any])`: Поисковый запрос
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `query` | `dict[str, Any]` | Словарь с фильтром поиска. |
 
-**Returns:**
-- `dict[str, Any]: Результат поиска`
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `dict[str, Any] | None` | Найденный документ или None, если не найден. |
 
 ```python
     async def get_one(self, query: dict[str, Any]) -> dict[str, Any]:
-        """Получение конкретного объекта из БД.
+        """Получает один документ из коллекции по условию.
 
         Args:
-            query (dict[str, Any]): Поисковый запрос
+            query (dict[str, Any]): Словарь с фильтром поиска.
 
         Returns:
-            dict[str, Any]: Результат поиска
+            dict[str, Any] | None: Найденный документ или None, если не найден.
         """
         collection = await self._init_collection()
         result = await collection.find_one(query)
         return result
 ```
 ---
-### get_many
-**Получение N объектов из БД.**
+## get_many:
+#### Получает несколько документов из коллекции.
 
-**Args:**
-- `query (dit[str, Any])`: Поисковый запрос
-- `limit (int)`: Кол-во объектов
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `query` | `dict[str, Any]` | Словарь с фильтром поиска. |
+| `limit` | `int, optional` | Максимальное количество документов. По умолчанию 10. |
 
-**Returns:**
-- `list[dict[str, Any]]: Результат поиска`
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `list[dict[str, Any]]` | Список найденных документов. |
 
 ```python
     async def get_many(
         self, query: dict[str, Any], limit: int = 10
     ) -> list[dict[str, Any]]:
-        """Получение N объектов из БД.
+        """Получает несколько документов из коллекции.
 
         Args:
-            query (dit[str, Any]): Поисковый запрос
-            limit (int): Кол-во объектов
+            query (dict[str, Any]): Словарь с фильтром поиска.
+            limit (int, optional): Максимальное количество документов. По умолчанию 10.
 
         Returns:
-            list[dict[str, Any]]: Результат поиска
+            list[dict[str, Any]]: Список найденных документов.
         """
         collection = await self._init_collection()
         result = collection.find(query).limit(limit)
         return await result.to_list()
 ```
 ---
-### update
-**Обновление документа.**
+## update:
+#### Обновляет один документ в коллекции.
 
-**Args:**
-- `query (dict[str, Any])`: Поисковый запрос
-- `update_data (dict[str, Any])`: Данные для обновления
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `query` | `dict[str, Any]` | Словарь с фильтром поиска документа. |
+| `update_data` | `dict[str, Any]` | Данные для обновления (например, {"$set": {...}}). |
 
-**Returns:**
-- `dict[str, Any]: Обновленный документ`
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `dict[str, Any] | None` | Обновленный документ или None, если документ не найден. |
 
 ```python
     async def update(
         self, query: dict[str, Any], update_data: dict[str, Any]
     ) -> dict[str, Any]:
-        """Обновление документа.
+        """Обновляет один документ в коллекции.
 
         Args:
-            query (dict[str, Any]): Поисковый запрос
-            update_data (dict[str, Any]): Данные для обновления
+            query (dict[str, Any]): Словарь с фильтром поиска документа.
+            update_data (dict[str, Any]): Данные для обновления (например, {"$set": {...}}).
 
         Returns:
-            dict[str, Any]: Обновленный документ
+            dict[str, Any] | None: Обновленный документ или None, если документ не найден.
         """
         collection = await self._init_collection()
         result = await collection.find_one_and_update(
@@ -137,30 +168,36 @@
         return result
 ```
 ---
-### delete
-**Удаление объекта.**
+## delete:
+#### Удаляет один документ из коллекции.
 
-**Args:**
-- `query (dict[str, Any])`: Поисковый запрос
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `query` | `dict[str, Any]` | Словарь с фильтром для удаления. |
 
-**Returns:**
-- `bool: Результат операции`
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `bool` | True, если документ был успешно удален, иначе False. |
 
-**Exceptions:**
-- `ValueError: При неудачной операции`
+#### Исключения
+| Исключение | Описание |
+|------------|----------|
+| `ValueError` | Если возникла ошибка при удалении документа. |
 
 ```python
     async def delete(self, query: dict[str, Any]) -> bool:
-        """Удаление объекта.
+        """Удаляет один документ из коллекции.
 
         Args:
-            query (dict[str, Any]): Поисковый запрос
+            query (dict[str, Any]): Словарь с фильтром для удаления.
 
         Returns:
-            bool: Результат операции
+            bool: True, если документ был успешно удален, иначе False.
 
         Raises:
-            ValueError: При неудачной операции
+            ValueError: Если возникла ошибка при удалении документа.
         """
         try:
             collection = await self._init_collection()

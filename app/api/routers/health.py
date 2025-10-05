@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+# API_Health
+
 from litestar import get
 from litestar.status_codes import HTTP_200_OK
 from pymongo import AsyncMongoClient
@@ -11,13 +14,21 @@ client = AsyncMongoClient(Config.DATABASE_URL)
 
 @get("/health/server", status_code=HTTP_200_OK)
 def server_health_check() -> JSONResponse:
-    """Проверка работы сервера."""
+    """Проверка работы сервера.
+
+    Returns:
+        JSONResponse: Ответ
+    """
     return JSONResponse({"status": "ok"})
 
 
 @get("/health/db", status_code=HTTP_200_OK)
 async def db_health_check() -> JSONResponse:
-    """Проверка работы сервера и подключения к MongoDB."""
+    """Проверка работы сервера и подключения к MongoDB.
+
+    Returns:
+        JSONResponse: Ответ
+    """
     try:
         await client.admin.command("ping")
         return JSONResponse({"status": "ok", "mongodb": "connected"})

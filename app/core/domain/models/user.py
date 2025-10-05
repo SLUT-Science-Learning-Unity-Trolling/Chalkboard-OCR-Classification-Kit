@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# UserDE
 from dataclasses import dataclass
 
 from bson import ObjectId
@@ -7,7 +9,7 @@ from bson import ObjectId
 class User:
     """Доменная модель пользователя.
 
-    Attributes:
+    Args:
         _id: Уникальный идентификатор пользователя
         username: Имя пользователя
         email: Email пользователя
@@ -20,5 +22,9 @@ class User:
 
     @property
     def id(self) -> str:
-        """Возвращает строковое представление ID."""
+        """Возвращает строковое представление ID.
+
+        Returns:
+            str: Уникальный идентификатор пользователя
+        """
         return str(self._id)

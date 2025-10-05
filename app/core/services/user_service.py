@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+# UserService
+
 from typing import Any
 from bson import ObjectId
 from email_validator import EmailNotValidError, validate_email
@@ -35,6 +38,8 @@ class UserService:
             repository (RepositoryInterface): Репозиторий
             security (SecurityService): Секьюрити сервис
             validator (ValidationService): Сервис валидации
+        Returns:
+            None
         """
         self._repo = repository
         self._security = security
@@ -45,17 +50,26 @@ class UserService:
     ) -> User:
         """Создает нового пользователя.
 
+        Проверяет корректность пароля, уникальность имени пользователя и email,
+        валидирует email и создает хэш пароля.
+
         Args:
-            username: Имя пользователя
-            email: Email пользователя
-            password: Пароль пользователя
-            repeat_password: Повтор пароля пользователя
+            username (str): Имя пользователя.
+            email (str): Email пользователя.
+            password (str): Пароль пользователя.
+            repeat_password (str): Подтверждение пароля.
 
         Returns:
-            User: Созданный пользователь
+            User: Экземпляр созданного пользователя.
 
         Raises:
-            UserCreationError: Если пользователь не был создан
+            PasswordDontMatch: Если пароли не совпадают.
+            PasswordValidationError: Если пароль не проходит проверку валидатором.
+            UsernameValidationError: Если имя пользователя некорректное.
+            UsernameAlreadyTaken: Если имя пользователя уже занято.
+            EmailAlreadyTaken: Если email уже используется.
+            EmailValidationError: Если email некорректный.
+            UserCreationError: Если произошла ошибка при создании пользователя.
         """
         if password != repeat_password:
             raise PasswordDontMatch
@@ -118,7 +132,7 @@ class UserService:
             email (str): Email пользователя
 
         Returns:
-            dict[str, Any]: Пользователь
+            dict[str, Any] | None: Пользователь или None
         """
         user = await self._repo.get_one({"username": username})
         if user:

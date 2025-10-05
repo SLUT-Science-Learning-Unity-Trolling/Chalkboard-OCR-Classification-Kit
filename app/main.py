@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+# Main
+
 from litestar import Litestar
 from litestar.openapi import OpenAPIConfig
 

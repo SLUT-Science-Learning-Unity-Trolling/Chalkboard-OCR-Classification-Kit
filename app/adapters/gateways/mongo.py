@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+# MongoGateway
+
 from typing import Optional
 
 from pymongo import AsyncMongoClient

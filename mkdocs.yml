@@ -36,7 +36,7 @@ nav:
       - Services:
           - User Service: core/services/user_service.md
           - Auth Service: core/services/auth_service.md
-          - Security Service: core/services/security_service.md  # Исправил опечатку
+          - Security Service: core/services/security_service.md
       - Errors:
           - Auth Errors: core/errors/auth.md
           - User Errors: core/errors/user.md
@@ -47,8 +47,8 @@ nav:
           - User: api/routers/user.md
           - Health: api/routers/health.md
       - Schemas:
-          - User DTO: api/schemas/user_dto.md  # Исправил shemas → schemas
-  - Adapters:  # Временно, переименуй в Adapters
+          - User DTO: api/schemas/user_dto.md
+  - Adapters:
       - Gateways:
           - Mongo Gateway: adapters/gateways/mongo.md
       - Repositories:
@@ -58,8 +58,9 @@ nav:
           - Database Interface: adapters/interfaces/db.md
   - Main: main.md
   - Container: container.md
-  - Тесты: tests/in_work.md  # Новый раздел
-  - Скрипты: scripts/clean_project.md  # Или scripts.md, если объединишь
+  - Тесты: tests/in_work.md
+  - Скрипты: scripts/clean_project.md
+  - Утилиты: utils/generate_docs.md
   - Диаграммы:
       - Обзор: diagrams/diagrams.md
       - Бизнес-логика: diagrams/business_logic_diagram.png
@@ -71,8 +72,9 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
-          paths: 
+          paths:
             - app
+            - .
           options:
             docstring_style: google
             show_source: true
@@ -80,8 +82,6 @@ plugins:
             merge_init_into_class: true
             show_category_heading: true
             filters: ["!^_"]
-  - wiki-publish:
-      wiki_repo: "https://github.com/SLUT-Science-Learning-Unity-Trolling/Chalkboard-OCR-Classification-Kit.wiki.git"
 
 markdown_extensions:
   - admonition

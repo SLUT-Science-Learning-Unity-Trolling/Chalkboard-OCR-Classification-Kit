@@ -3,13 +3,15 @@
 **Сервис для работы с пользователями.**
 
 ---
-### init
-**Конструктор.**
+## init:
+#### Конструктор.
 
-**Args:**
-- `repository (RepositoryInterface)`: Репозиторий
-- `security (SecurityService)`: Секьюрити сервис
-- `validator (ValidationService)`: Сервис валидации
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `repository` | `RepositoryInterface` | Репозиторий |
+| `security` | `SecurityService` | Секьюрити сервис |
+| `validator` | `ValidationService` | Сервис валидации |
 
 ```python
     def __init__(
@@ -32,20 +34,34 @@
         self._validator = validator
 ```
 ---
-### create_user
-**Создает нового пользователя.**
+## create_user:
+#### Создает нового пользователя.
+Проверяет корректность пароля, уникальность имени пользователя и email,
+валидирует email и создает хэш пароля.
 
-**Args:**
-- `username`: Имя пользователя
-- `email`: Email пользователя
-- `password`: Пароль пользователя
-- `repeat_password`: Повтор пароля пользователя
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `username` | `str` | Имя пользователя. |
+| `email` | `str` | Email пользователя. |
+| `password` | `str` | Пароль пользователя. |
+| `repeat_password` | `str` | Подтверждение пароля. |
 
-**Returns:**
-- `User: Созданный пользователь`
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `User` | Экземпляр созданного пользователя. |
 
-**Exceptions:**
-- `UserCreationError: Если пользователь не был создан`
+#### Исключения
+| Исключение | Описание |
+|------------|----------|
+| `PasswordDontMatch` | Если пароли не совпадают. |
+| `PasswordValidationError` | Если пароль не проходит проверку валидатором. |
+| `UsernameValidationError` | Если имя пользователя некорректное. |
+| `UsernameAlreadyTaken` | Если имя пользователя уже занято. |
+| `EmailAlreadyTaken` | Если email уже используется. |
+| `EmailValidationError` | Если email некорректный. |
+| `UserCreationError` | Если произошла ошибка при создании пользователя. |
 
 ```python
     async def create_user(
@@ -53,17 +69,26 @@
     ) -> User:
         """Создает нового пользователя.
 
+        Проверяет корректность пароля, уникальность имени пользователя и email,
+        валидирует email и создает хэш пароля.
+
         Args:
-            username: Имя пользователя
-            email: Email пользователя
-            password: Пароль пользователя
-            repeat_password: Повтор пароля пользователя
+            username (str): Имя пользователя.
+            email (str): Email пользователя.
+            password (str): Пароль пользователя.
+            repeat_password (str): Подтверждение пароля.
 
         Returns:
-            User: Созданный пользователь
+            User: Экземпляр созданного пользователя.
 
         Raises:
-            UserCreationError: Если пользователь не был создан
+            PasswordDontMatch: Если пароли не совпадают.
+            PasswordValidationError: Если пароль не проходит проверку валидатором.
+            UsernameValidationError: Если имя пользователя некорректное.
+            UsernameAlreadyTaken: Если имя пользователя уже занято.
+            EmailAlreadyTaken: Если email уже используется.
+            EmailValidationError: Если email некорректный.
+            UserCreationError: Если произошла ошибка при создании пользователя.
         """
         if password != repeat_password:
             raise PasswordDontMatch
@@ -105,14 +130,18 @@
         return User(**user)
 ```
 ---
-### get_user_by_id
-**Возвращает пользователя по ID.**
+## get_user_by_id:
+#### Возвращает пользователя по ID.
 
-**Args:**
-- `user_id (str)`: ID пользователя
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `user_id` | `str` | ID пользователя |
 
-**Returns:**
-- `dict[str, Any]: Пользователь`
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `dict[str, Any]` | Пользователь |
 
 ```python
     async def get_user_by_id(self, user_id: str) -> dict[str, Any]:
@@ -128,15 +157,19 @@
         return user
 ```
 ---
-### does_user_exists
-**Проверяет, существует ли пользователь по username или email.**
+## does_user_exists:
+#### Проверяет, существует ли пользователь по username или email.
 
-**Args:**
-- `username (str)`: Имя пользователя
-- `email (str)`: Email пользователя
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `username` | `str` | Имя пользователя |
+| `email` | `str` | Email пользователя |
 
-**Returns:**
-- `dict[str, Any]: Пользователь`
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `dict[str, Any] | None` | Пользователь или None |
 
 ```python
     async def does_user_exists(
@@ -149,7 +182,7 @@
             email (str): Email пользователя
 
         Returns:
-            dict[str, Any]: Пользователь
+            dict[str, Any] | None: Пользователь или None
         """
         user = await self._repo.get_one({"username": username})
         if user:

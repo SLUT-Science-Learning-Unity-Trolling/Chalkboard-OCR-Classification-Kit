@@ -3,18 +3,22 @@
 **Класс для работы с MongoDB.**
 
 ---
-### init
-**Конструктор.**
+## init:
+#### Конструктор.
 
-**Args:**
-- `self._uri (str)`: Строка подключения к базе данных.
-- `self._database (str)`: Имя базы данных.
-- `self._username (str)`: Имя пользователя базы данных.
-- `self._password (str)`: Пароль пользователя базы данных.
-- `self._client (Optional[AsyncMongoClient])`: Объект клиента MongoDB.
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `self._uri` | `str` | Строка подключения к базе данных. |
+| `self._database` | `str` | Имя базы данных. |
+| `self._username` | `str` | Имя пользователя базы данных. |
+| `self._password` | `str` | Пароль пользователя базы данных. |
+| `self._client` | `Optional[AsyncMongoClient]` | Объект клиента MongoDB. |
 
-**Exceptions:**
-- `ValueError: Если DATABASE_URL не установлен в конфигурации.`
+#### Исключения
+| Исключение | Описание |
+|------------|----------|
+| `ValueError` | Если DATABASE_URL не установлен в конфигурации. |
 
 ```python
     def __init__(self) -> None:
@@ -40,8 +44,8 @@
             raise ValueError("DATABASE_URL is not set in configuration")
 ```
 ---
-### connect
-**Устанавливает соединение с MongoDB.**
+## connect:
+#### Устанавливает соединение с MongoDB.
 
 ```python
     async def connect(self) -> None:
@@ -53,8 +57,8 @@
             raise ConnectionError(f"Failed to connect to MongoDB: {str(e)}")
 ```
 ---
-### get_database
-**Возвращает объект базы данных.**
+## get_database:
+#### Возвращает объект базы данных.
 
 ```python
     async def get_database(self) -> Database:
@@ -64,8 +68,8 @@
         return self._client[self._database]  # type: ignore
 ```
 ---
-### get_collection
-**Возвращает коллекцию по имени.**
+## get_collection:
+#### Возвращает коллекцию по имени.
 
 ```python
     async def get_collection(self, name: str) -> AsyncCollection:
@@ -74,8 +78,8 @@
         return db[name]
 ```
 ---
-### close
-**Закрывает соединение с MongoDB.**
+## close:
+#### Закрывает соединение с MongoDB.
 
 ```python
     async def close(self) -> None:

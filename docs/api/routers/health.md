@@ -1,20 +1,38 @@
-### server_health_check
-**Проверка работы сервера.**
+## server_health_check:
+#### Проверка работы сервера.
+
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `JSONResponse` | Ответ |
 
 ```python
 @get("/health/server", status_code=HTTP_200_OK)
 def server_health_check() -> JSONResponse:
-    """Проверка работы сервера."""
+    """Проверка работы сервера.
+
+    Returns:
+        JSONResponse: Ответ
+    """
     return JSONResponse({"status": "ok"})
 ```
 ---
-### db_health_check
-**Проверка работы сервера и подключения к MongoDB.**
+## db_health_check:
+#### Проверка работы сервера и подключения к MongoDB.
+
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `JSONResponse` | Ответ |
 
 ```python
 @get("/health/db", status_code=HTTP_200_OK)
 async def db_health_check() -> JSONResponse:
-    """Проверка работы сервера и подключения к MongoDB."""
+    """Проверка работы сервера и подключения к MongoDB.
+
+    Returns:
+        JSONResponse: Ответ
+    """
     try:
         await client.admin.command("ping")
         return JSONResponse({"status": "ok", "mongodb": "connected"})

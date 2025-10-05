@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+# Container
+
 from punq import Container
 
 from app.config import Config

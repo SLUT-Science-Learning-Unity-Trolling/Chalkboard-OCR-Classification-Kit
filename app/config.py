@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+# Config
+
 import os
 
 from dotenv import load_dotenv

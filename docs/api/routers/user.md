@@ -1,5 +1,16 @@
-### create_user
-**Эндпоинт создания пользователя.**
+## create_user:
+#### Эндпоинт создания пользователя.
+
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `data` | `UserCreateDTO` | Данные для создания пользователя |
+| `container` | `Container` | Контейнер |
+
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `UserDTO` | Данные пользователя |
 
 ```python
 )
@@ -7,7 +18,15 @@ async def create_user(
     data: UserCreateDTO,
     container: Container,
 ) -> UserDTO:
-    """Эндпоинт создания пользователя."""
+    """Эндпоинт создания пользователя.
+
+    Args:
+        data (UserCreateDTO): Данные для создания пользователя
+        container (Container): Контейнер
+
+    Returns:
+        UserDTO: Данные пользователя
+    """
     user_service = container.resolve(UserService)
     try:
         user: User = await user_service.create_user(

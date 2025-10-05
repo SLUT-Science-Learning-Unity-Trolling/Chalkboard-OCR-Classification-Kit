@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+# ValidationService
+
 import re
 from app import config
 from app.core.errors.validation import (
@@ -7,10 +10,10 @@ from app.core.errors.validation import (
 
 
 class ValidationService:
-    """Серивис валидации."""
+    """Сервис валидации."""
 
     def __init__(self, config=config.Config) -> None:  # type: ignore
-        """Конструктор.
+        """Инциализация.
 
         Args:
             config (Config): Конфиг
@@ -61,6 +64,11 @@ class ValidationService:
     async def validate_username(self, username: str) -> bool:
         """Проверка имени пользователя.
 
+        Требования:
+        - Минимальная длина: self.config.USERNAME_MIN_LENGTH
+        - Максимальная длина: self.config.USERNAME_MAX_LENGTH
+        - Разрешены только латинские буквы, цифры, символы _ и -
+
         Args:
             username (str): Имя пользователя
 
@@ -69,11 +77,6 @@ class ValidationService:
 
         Raises:
             UsernameValidationError: Ошибка при валидации имени
-
-        Требования:
-        - Минимальная длина: self.config.USERNAME_MIN_LENGTH
-        - Максимальная длина: self.config.USERNAME_MAX_LENGTH
-        - Разрешены только латинские буквы, цифры, символы _ и -
         """
         if len(username) < self.config.USERNAME_MIN_LENGTH:
             raise UsernameValidationError(
