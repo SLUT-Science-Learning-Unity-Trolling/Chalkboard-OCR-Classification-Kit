@@ -212,4 +212,4 @@ redis.data/
 redis.conf/
 .benchmarks/
 /wiki
-.wiki_tmp
+.wiki_tmp/
