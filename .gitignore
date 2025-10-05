@@ -211,3 +211,4 @@ docker-compose.yml
 redis.data/
 redis.conf/
 .benchmarks/
+/wiki
