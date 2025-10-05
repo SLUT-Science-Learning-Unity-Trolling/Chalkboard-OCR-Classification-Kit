@@ -1,101 +1,172 @@
-# MongoRepo
+## Класс MongoRepo
 
-`MongoRepo` — это реализация интерфейса `RepositoryInterface` для работы с MongoDB в проекте **Chalkboard OCR Classification Kit**. Использует библиотеку `motor` для асинхронного взаимодействия с MongoDB и `pydantic` для валидации данных.
+**Репозиторий для работы с mongodb.**
 
-!!! info
-    Класс предназначен для работы с коллекцией MongoDB. Все методы возвращают данные в формате словарей
+---
+### init
+**Конструктор.**
 
-## Инициализация
+**Args:**
+- `gateway (DBGatewayInterface)`: Гейт подключения к бд
+- `collection_name (str)`: Имя коллекции
 
 ```python
-from motor.motor_asyncio import AsyncIOMotorCollection
-from pydantic import BaseModel
-from app.repositories.mongo_repo import MongoRepo
+    def __init__(
+        self, gateway: DBGatewayInterface, collection_name: str
+    ) -> None:
+        """Конструктор.
 
-class MyModel(BaseModel):
-    id: str
-    name: str
-
-collection = AsyncIOMotorCollection(...)  # Коллекция MongoDB
-repo = MongoRepo(collection=collection, model=MyModel)
+        Args:
+            gateway (DBGatewayInterface): Гейт подключения к бд
+            collection_name (str): Имя коллекции
+        """
+        self.__gw = gateway
+        self.collection_name = collection_name
 ```
+---
+### _init_collection
 
-- **Параметры**:
-  - `collection: AsyncIOMotorCollection`: Коллекция MongoDB для работы.
-  - `model: Type[BaseModel]`: Pydantic-модель для валидации данных.
-
-## Методы
-
-### `get_one(query: dict[str, Any]) -> Optional[dict[str, Any]]`
-Ищет и возвращает один документ по заданному запросу.
-
-- **Параметры**:
-  - `query: dict[str, Any]`: Фильтр для поиска (например, `{"id": "123"}`).
-- **Возвращает**: Словарь, соответствующий Pydantic-модели, или `None`, если документ не найден.
-
-**Пример**:
 ```python
-document = await repo.get_one({"id": "123"})
-if document:
-    print(document["name"])  # Доступ к полям словаря
+    async def _init_collection(self) -> AsyncCollection:
+        return await self.__gw.get_collection(self.collection_name)  # type: ignore
 ```
+---
+### add
+**Добавление документа в БД.**
 
-### `get_all(query: dict[str, Any]) -> List[dict[str, Any]]`
-Возвращает список всех документов, соответствующих запросу.
+**Args:**
+- `data (dict[str, Any])`: Документ
 
-- **Параметры**:
-  - `query: dict[str, Any]`: Фильтр для поиска (опционально, например, `{}` для всех документов).
-- **Возвращает**: Список словарей, соответствующих Pydantic-модели.
+**Returns:**
+- `ObjectId: ID нового документа`
 
-**Пример**:
 ```python
-documents = await repo.get_all({})
-for doc in documents:
-    print(doc["name"])
+    async def add(self, data: dict[str, Any]) -> ObjectId:
+        """Добавление документа в БД.
+
+        Args:
+            data (dict[str, Any]): Документ
+
+        Returns:
+            ObjectId: ID нового документа
+        """
+        collection = await self._init_collection()
+        result = await collection.insert_one(data)
+        return result.inserted_id
 ```
+---
+### get_one
+**Получение конкретного объекта из БД.**
 
-### `add(document: dict[str, Any]) -> dict[str, Any]`
-Создаёт новый документ в коллекции.
+**Args:**
+- `query (dict[str, Any])`: Поисковый запрос
 
-- **Параметры**:
-  - `document: dict[str, Any]`: Данные для создания документа.
-- **Возвращает**: Словарь, соответствующий созданной Pydantic-модели.
+**Returns:**
+- `dict[str, Any]: Результат поиска`
 
-**Пример**:
 ```python
-new_doc = await repo.add({"id": "123", "name": "Example"})
-print(new_doc["id"])  # "123"
+    async def get_one(self, query: dict[str, Any]) -> dict[str, Any]:
+        """Получение конкретного объекта из БД.
+
+        Args:
+            query (dict[str, Any]): Поисковый запрос
+
+        Returns:
+            dict[str, Any]: Результат поиска
+        """
+        collection = await self._init_collection()
+        result = await collection.find_one(query)
+        return result
 ```
+---
+### get_many
+**Получение N объектов из БД.**
 
-### `get_or_create(document: dict[str, Any]) -> Tuple[dict[str, Any], bool]`
-Ищет документ по критериям, а если он не найден — создаёт новый.
+**Args:**
+- `query (dit[str, Any])`: Поисковый запрос
+- `limit (int)`: Кол-во объектов
 
-- **Параметры**:
-  - `document: dict[str, Any]`: Данные для поиска или создания.
-- **Возвращает**: Кортеж из словаря (Pydantic-модель) и флага (`True`, если создан; `False`, если найден).
+**Returns:**
+- `list[dict[str, Any]]: Результат поиска`
 
-**Пример**:
 ```python
-doc, created = await repo.get_or_create({"id": "123", "name": "Example"})
-print(doc["name"], created)  # "Example", True (или False, если уже существует)
+    async def get_many(
+        self, query: dict[str, Any], limit: int = 10
+    ) -> list[dict[str, Any]]:
+        """Получение N объектов из БД.
+
+        Args:
+            query (dit[str, Any]): Поисковый запрос
+            limit (int): Кол-во объектов
+
+        Returns:
+            list[dict[str, Any]]: Результат поиска
+        """
+        collection = await self._init_collection()
+        result = collection.find(query).limit(limit)
+        return await result.to_list()
 ```
+---
+### update
+**Обновление документа.**
 
-### `update(query: dict[str, Any], update_data: dict[str, Any]) -> dict[str, Any]`
-Обновляет существующий документ по заданному запросу.
+**Args:**
+- `query (dict[str, Any])`: Поисковый запрос
+- `update_data (dict[str, Any])`: Данные для обновления
 
-- **Параметры**:
-  - `query: dict[str, Any]`: Фильтр для поиска документа.
-  - `update_data: dict[str, Any]`: Данные для обновления.
-- **Возвращает**: Словарь, соответствующий обновлённой Pydantic-модели.
+**Returns:**
+- `dict[str, Any]: Обновленный документ`
 
-**Пример**:
 ```python
-updated_doc = await repo.update({"id": "123"}, {"name": "New Name"})
-print(updated_doc["name"])  # "New Name"
-```
+    async def update(
+        self, query: dict[str, Any], update_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Обновление документа.
 
-## Примечания
-- Все методы используют Pydantic для валидации данных, обеспечивая типобезопасность.
-- Метод `model_dump(exclude_unset=True)` исключает неустановленные поля при создании или обновлении.
-- Для работы требуется настроенная коллекция MongoDB через `motor.motor_asyncio`.
-- Все возвращаемые данные преобразуются в словари через `model_dump()` для соответствия интерфейсу.
+        Args:
+            query (dict[str, Any]): Поисковый запрос
+            update_data (dict[str, Any]): Данные для обновления
+
+        Returns:
+            dict[str, Any]: Обновленный документ
+        """
+        collection = await self._init_collection()
+        result = await collection.find_one_and_update(
+            filter=query, update=update_data
+        )
+        return result
+```
+---
+### delete
+**Удаление объекта.**
+
+**Args:**
+- `query (dict[str, Any])`: Поисковый запрос
+
+**Returns:**
+- `bool: Результат операции`
+
+**Exceptions:**
+- `ValueError: При неудачной операции`
+
+```python
+    async def delete(self, query: dict[str, Any]) -> bool:
+        """Удаление объекта.
+
+        Args:
+            query (dict[str, Any]): Поисковый запрос
+
+        Returns:
+            bool: Результат операции
+
+        Raises:
+            ValueError: При неудачной операции
+        """
+        try:
+            collection = await self._init_collection()
+            await collection.find_one_and_delete(query)
+            return True
+        except Exception as e:
+            raise ValueError(e)
+```
+---

@@ -1,2 +1,72 @@
-# Auth Router
-::: app.api.routers.auth
+### auth_user
+**Эндпоинт для авторизации пользователя с установкой JWT в cookie.**
+
+```python
+)
+async def auth_user(
+    data: UserLoginDTO,
+    container: Container,
+) -> Response:
+    """Эндпоинт для авторизации пользователя с установкой JWT в cookie."""
+    auth_service = container.resolve(AuthService)
+
+    try:
+        user, token = await auth_service.auth_existing_user(
+            identifier=data.identifier,
+            password=data.password,
+        )
+
+        response = Response({"user": UserDTO.fromrow(user.__dict__)})
+        response.set_cookie(
+            key="token",
+            value=token,
+            httponly=True,
+            secure=True,
+            samesite="strict",
+            path="/",
+        )
+        return response
+
+    except InvalidEmailOrPassword as e:
+        print(f"Unexpected error: {str(e)}")
+
+        raise HTTPException(
+            status_code=500, detail="Internal server error occurred"
+        )
+```
+---
+### logout_user
+**Эндпоинт выхода из профиля.**
+Удаляет JWT из cookie, разлогинивая пользователя.
+
+```python
+@post("/auth/logout", status_code=HTTP_200_OK)
+async def logout_user() -> Response:
+    """Эндпоинт выхода из профиля.
+    Удаляет JWT из cookie, разлогинивая пользователя.
+    """
+    response = Response({"detail": "Logged out successfully"})
+    response.delete_cookie(
+        key="token",
+        path="/",
+    )
+
+    return response
+```
+---
+### get_me
+**Эндпоинт возвращает данные текущего пользователя.**
+
+```python
+)
+async def get_me(current_user: UserDTO | None) -> dict[str, Any]:
+    """Эндпоинт возвращает данные текущего пользователя."""
+    if current_user:
+        return {"success": True, "user": current_user}
+
+    return {
+        "success": False,
+        "message": "Пользователь не зарегистрирован или не найден в системе",
+    }
+```
+---
