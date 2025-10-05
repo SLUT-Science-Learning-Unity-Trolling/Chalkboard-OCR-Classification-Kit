@@ -10,4 +10,3 @@ repos:
       - id: mypy
         additional_dependencies: []
         args: ["--ignore-missing-imports"]
-        exclude: "plugins/wiki_publish/"

@@ -1,0 +1,48 @@
+.md-typeset pre > code {
+    font-size: 15px;
+    line-height: 1.4;
+  }
+  
+  .highlighttable {
+    margin: 0;
+  }
+  
+  .highlighttable td.linenos {
+    padding-right: 0.5em;
+    color: var(--md-default-fg-color--lighter);
+  }
+  
+/* === Сужаем боковые панели и расширяем контент === */
+
+/* Левый сайдбар (навигация) */
+.md-sidebar--primary {
+    width: 230px !important; /* стандарт ~300px */
+  }
+  
+  /* Правый сайдбар (toc) */
+  .md-sidebar--secondary {
+    width: 220px !important; /* стандарт ~320px */
+  }
+  
+  /* Центральная колонка с контентом */
+  .md-content {
+    max-width: auto; /* можно поставить 1100 или auto */
+    margin: 0 auto;
+  }
+  
+  /* Немного подвинем содержимое внутри, чтобы не прилипало к краю */
+  .md-content__inner {
+    padding: 1rem 1.5rem;
+  }
+  
+  /* Адаптивность: на узких экранах сайдбары не трогаем */
+  @media (max-width: 1220px) {
+    .md-sidebar--primary,
+    .md-sidebar--secondary {
+      width: auto !important;
+    }
+    .md-content {
+      max-width: 90%;
+    }
+  }
+  

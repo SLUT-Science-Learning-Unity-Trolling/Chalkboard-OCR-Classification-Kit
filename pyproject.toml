@@ -9,26 +9,40 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"
+
+# --- Core dependencies ---
 punq = "^0.7.0"
 pymongo = "^4.15.1"
-pytest = "^8.4.2"
-starlette = "^0.48.0"
-uvicorn = "^0.36.0"
-httpx = "^0.28.1"
-litestar = "^2.17.0"
 dotenv = "^0.9.9"
-jamlib = "^2.3.0"
 email-validator = "^2.3.0"
 python-magic = "^0.4.27"
-strawberry-graphql = {extras = ["debug-server"], version = "^0.282.0"}
-ruff = "^0.13.3"
+pygments = "^2.19.2"
+
+# --- Web & API ---
+starlette = "^0.48.0"
+uvicorn = "^0.36.0"
+litestar = "^2.17.0"
+
+# --- Utility / Additional libs ---
+jamlib = "^2.3.0"
+giraffe-view = "^0.2.3"
+
+
+[tool.poetry.group.docs.dependencies]
+mkdocs = "*"
 mkdocs-material = "^9.6.21"
 mkdocs-glightbox = "^0.5.1"
 mkdocstrings = "^0.30.1"
 mkdocstrings-python = "^1.18.2"
-html2text = "^2025.4.15"
-bs4 = "^0.0.2"
-giraffe-view = "^0.2.3"
+
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^4.1.0"
+icecream = "^2.1.4"
+mypy = "^1.15.0"
+pytest-benchmark = "^5.1.0"
+pytest = "^8.4.2"
+ruff = "^0.13.3"
 
 [tool.jam]
 auth_type = "jwt"
@@ -36,17 +50,7 @@ alg = "HS256"
 secret_key = "SECRET"
 expire = 1209600
 
-[tool.poetry.group.docs]
-optional = true
-
-[tool.poetry.group.dev.dependencies]
-pytest-benchmark = "^5.1.0"
-
-[tool.poetry.dev-dependencies]
-pre-commit = "^4.1.0"
-icecream = "^2.1.4"
-mypy = "^1.15.0"
-
+# ---------------- Ruff ----------------
 [tool.ruff]
 target-version = "py39"
 line-length = 80
@@ -71,13 +75,14 @@ lines-between-types = 1
 combine-as-imports = true
 force-wrap-aliases = true
 
+# ---------------- Mypy ----------------
 [tool.mypy]
-disable_error_code = ["misc", "no-any-return"]
 python_version = "3.13"
-
 files = ["mongofy", "tests"]
 
 strict = true
+ignore_missing_imports = true
+disable_error_code = ["misc", "no-any-return"]
 
 disallow_untyped_calls = true
 disallow_untyped_defs = true
@@ -90,24 +95,13 @@ warn_redundant_casts = true
 warn_unreachable = true
 warn_no_return = true
 strict_equality = true
-ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_defs = false
 check_untyped_defs = true
 
-
-[[tool.mypy.overrides]]
-module = "tests.*"
-disallow_untyped_defs = false
-check_untyped_defs = true
-
-[tool.poetry.group.docs.dependencies]
-mkdocs = "*"
-mkdocs-material = "^9.6.20"
-mkdocs-glightbox = "^0.5.1"
-
+# ---------------- Build System ----------------
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

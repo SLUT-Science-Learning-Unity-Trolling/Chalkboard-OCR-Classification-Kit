@@ -17,7 +17,7 @@
 | `- raises (str)` | Раздел исключений. |
 
 ```python
-def parse_google_docstring(docstring: str) -> dict[str, Sequence[str]]:
+def parse_google_docstring(docstring: str) -> dict[str, Any]:
     """Парсит Google-style докстринг в структуру словаря.
 
     Args:
@@ -40,7 +40,7 @@ def parse_google_docstring(docstring: str) -> dict[str, Sequence[str]]:
             "raises": "",
         }
 
-    sections = {
+    sections: dict[str, Any] = {
         "first_line": "",
         "rest_description": [],
         "args": [],
@@ -64,9 +64,11 @@ def parse_google_docstring(docstring: str) -> dict[str, Sequence[str]]:
                     sections["first_line"] = line_strip
                     is_first_line = False
                 else:
-                    sections["rest_description"].append(line)
+                    if isinstance(sections["rest_description"], list):
+                        sections["rest_description"].append(line)
             else:
-                sections[current_section].append(line)
+                if isinstance(sections[current_section], list):
+                    sections[current_section].append(line)
 
     for key in sections:
         if key == "first_line":
@@ -90,7 +92,9 @@ def parse_google_docstring(docstring: str) -> dict[str, Sequence[str]]:
 | `str` | Текст исходного кода функции. |
 
 ```python
-def get_function_body(file_path: Path, node: ast.AST) -> str:
+def get_function_body(
+    file_path: Path, node: ast.FunctionDef | ast.AsyncFunctionDef
+) -> str:
     """Извлекает полный исходный код функции или метода, включая сигнатуру и декораторы.
 
     Args:
@@ -143,7 +147,7 @@ def extract_docstrings(file_path: Path) -> dict[Any, Any]:
             - functions (dict): Глобальные функции.
     """
     with open(file_path, encoding="utf-8") as f:
-        tree: ast.AST = ast.parse(f.read(), filename=str(file_path))
+        tree = ast.parse(f.read(), filename=str(file_path))
 
     docstrings: dict[str, Any] = {
         "module": ast.get_docstring(tree),
@@ -153,7 +157,7 @@ def extract_docstrings(file_path: Path) -> dict[Any, Any]:
     for node in tree.body:
         if isinstance(node, ast.ClassDef):
             class_doc: dict[str, Any] = parse_google_docstring(
-                ast.get_docstring(node)
+                ast.get_docstring(node) or ""
             )
             class_doc["methods"] = {}
             for cnode in node.body:
@@ -188,7 +192,9 @@ def extract_docstrings(file_path: Path) -> dict[Any, Any]:
 | `str` | Сформатированный Markdown. |
 
 ```python
-def format_function_md(name: str, doc: dict[str, Any], is_method=False) -> str:
+def format_function_md(
+    name: str, doc: dict[str, Any], is_method: bool = False
+) -> str:
     """Форматирует функцию или метод в Markdown с таблицами аргументов, возвращаемых значений и исключений.
 
     Args:
@@ -368,7 +374,7 @@ def create_docs(src_dirs: list[Path], dst_dir: Path) -> None:
 ---
 ## rename_wiki_files_by_header:
 #### Переименовывает .md файлы в .wiki_tmp на основании второй строки исходных .py файлов.
-Если вторая строка файла начинается с # , используется её содержимое (без решётки и пробелов) как новое имя Markdown-файла. 
+Если вторая строка файла начинается с # , используется её содержимое (без решётки и пробелов) как новое имя Markdown-файла.
 Если такого заголовка нет, имя остаётся прежним.
 
 #### Аргументы
@@ -379,13 +385,13 @@ def create_docs(src_dirs: list[Path], dst_dir: Path) -> None:
 
 ```python
 def rename_wiki_files_by_header(local_wiki_dir: Path, docs_dir: Path) -> None:
-    """Переименовывает .md файлы в .wiki_tmp на основании второй строки исходных .py файлов. 
-    Если вторая строка файла начинается с # , используется её содержимое (без решётки и пробелов) как новое имя Markdown-файла. 
-    Если такого заголовка нет, имя остаётся прежним. 
-    
-    Args: 
-        local_wiki_dir (Path): Локальная директория Wiki (.wiki_tmp) 
-        docs_dir (Path): Папка с документацией (docs/) 
+    """Переименовывает .md файлы в .wiki_tmp на основании второй строки исходных .py файлов.
+    Если вторая строка файла начинается с # , используется её содержимое (без решётки и пробелов) как новое имя Markdown-файла.
+    Если такого заголовка нет, имя остаётся прежним.
+
+    Args:
+        local_wiki_dir (Path): Локальная директория Wiki (.wiki_tmp)
+        docs_dir (Path): Папка с документацией (docs/)
     """
     for root, _, files in os.walk(local_wiki_dir):
         for file in files:
@@ -425,7 +431,9 @@ def rename_wiki_files_by_header(local_wiki_dir: Path, docs_dir: Path) -> None:
                     new_md_path = md_path.with_name(new_md_name)
                     if new_md_path != md_path:
                         os.rename(md_path, new_md_path)
-                        print(f"[Wiki] Переименован: {md_path.name} → {new_md_name}")
+                        print(
+                            f"[Wiki] Переименован: {md_path.name} → {new_md_name}"
+                        )
             except Exception as e:
                 print(f"[Wiki] Ошибка при обработке {md_path}: {e}")
 ```
