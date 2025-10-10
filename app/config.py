@@ -1,11 +1,13 @@
-# -*- coding: utf-8 -*-
+"""Модуль содержит конфигурацию приложения."""
 # Config
 
 import os
+
 from pathlib import Path
 
 from dotenv import load_dotenv
 from jam import Jam
+
 
 load_dotenv()
 

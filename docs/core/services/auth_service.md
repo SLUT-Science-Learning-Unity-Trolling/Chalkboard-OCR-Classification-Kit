@@ -1,3 +1,7 @@
+# Модуль auth_service
+
+Модуль содержит класс AuthService для аутентификации пользователей.
+
 ## Класс AuthService
 
 **Сервис для аутентификации пользователей.**
@@ -77,13 +81,11 @@
 
         user = await self._repo.get_one(query)
         if not user:
-            raise InvalidEmailOrPassword
+            raise InvalidEmailOrPasswordError
 
         hash, salt = self._security.deserialize_hash(user["password_hash"])
-        if not self._security.verify_hash(
-            password=password, salt=salt, hash_=hash
-        ):
-            raise InvalidEmailOrPassword
+        if not self._security.verify_hash(password=password, salt=salt, hash_=hash):
+            raise InvalidEmailOrPasswordError
 
         payload = jam.make_payload(
             exp=config.JWT_EXPIRE_TIME,
@@ -125,7 +127,7 @@
     @staticmethod
     async def get_current_user(
         request: Request, container: Container
-    ) -> Optional[UserDTO]:
+    ) -> UserDTO | None:
         """Возвращает текущего авторизованного пользователя.
 
         Проверяет JWT-токен в cookies запроса, извлекает пользователя из базы

@@ -1,3 +1,7 @@
+# Модуль validation_service
+
+Модуль содержит класс ValidationService для валидации данных.
+
 ## Класс ValidationService
 
 **Сервис валидации.**
@@ -12,7 +16,7 @@
 | `config` | `Config` | Конфиг |
 
 ```python
-    def __init__(self, config=config.Config) -> None:  # type: ignore
+    def __init__(self, config: type[config.Config] = config.Config) -> None:
         """Инциализация.
 
         Args:
@@ -58,9 +62,7 @@
             )
 
         if not any(char.isdigit() for char in password):
-            raise PasswordValidationError(
-                "Пароль должен содержать хотя бы одну цифру."
-            )
+            raise PasswordValidationError("Пароль должен содержать хотя бы одну цифру.")
 
         if not any(char.isupper() for char in password):
             raise PasswordValidationError(
@@ -72,9 +74,7 @@
                 "Пароль должен содержать хотя бы одну строчную букву."
             )
 
-        if not any(
-            char in self.config.PASSWORD_SPEC_SYMBOLS for char in password
-        ):
+        if not any(char in self.config.PASSWORD_SPEC_SYMBOLS for char in password):
             raise PasswordValidationError(
                 f"Пароль должен содержать хотя бы один спец. символ из {self.config.PASSWORD_SPEC_SYMBOLS}."
             )

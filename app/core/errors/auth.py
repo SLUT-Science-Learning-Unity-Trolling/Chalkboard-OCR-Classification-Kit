@@ -1,13 +1,11 @@
-# -*- coding: utf-8 -*-
+"""Модуль, содержащий исключения для сервиса аутентификации."""
 # AuthErrors
 
 
-class PasswordDontMatch(Exception):
+class PasswordDontMatchError(Exception):
     """Исключение, возникающее при несовпадении паролей."""
 
-    def __init__(
-        self, message: str | Exception = "Пароли не совпадают."
-    ) -> None:
+    def __init__(self, message: str | Exception = "Пароли не совпадают.") -> None:
         """Конструктор.
 
         Args:
@@ -19,9 +17,7 @@ class PasswordDontMatch(Exception):
 class EmailValidationError(Exception):
     """Исключение, возникающее при невалидном email."""
 
-    def __init__(
-        self, message: str | Exception = "Введите корректный email."
-    ) -> None:
+    def __init__(self, message: str | Exception = "Введите корректный email.") -> None:
         """Конструктор.
 
         Args:
@@ -30,12 +26,10 @@ class EmailValidationError(Exception):
         self.message: str | Exception = message
 
 
-class EmailAlreadyTaken(Exception):
+class EmailAlreadyTakenError(Exception):
     """Исключение, возникающее при зарегистрированном email."""
 
-    def __init__(
-        self, message: str | Exception = "Email уже зарегистрирован."
-    ) -> None:
+    def __init__(self, message: str | Exception = "Email уже зарегистрирован.") -> None:
         """Конструктор.
 
         Args:
@@ -44,7 +38,7 @@ class EmailAlreadyTaken(Exception):
         self.message: str | Exception = message
 
 
-class UsernameAlreadyTaken(Exception):
+class UsernameAlreadyTakenError(Exception):
     """Исключение, возникающее при зарегистрированном email."""
 
     def __init__(
@@ -58,12 +52,10 @@ class UsernameAlreadyTaken(Exception):
         self.message: str | Exception = message
 
 
-class InvalidEmailOrPassword(Exception):
+class InvalidEmailOrPasswordError(Exception):
     """Исключение, возникающее при невалидном логине или пароле."""
 
-    def __init__(
-        self, message: str | Exception = "Неверный логин или пароль."
-    ) -> None:
+    def __init__(self, message: str | Exception = "Неверный логин или пароль.") -> None:
         """Конструктор.
 
         Args:

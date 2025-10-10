@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+"""Модуль содержит эндпоинты для работы с пользователями."""
 # API_User
 
 from litestar import post
@@ -10,19 +10,19 @@ from litestar.status_codes import (
 )
 from punq import Container
 
+from app.api.schemas.user_dto import UserCreateDTO, UserDTO
 from app.core.domain.models.user import User
-from app.core.services.user_service import UserService
 from app.core.errors.auth import (
-    EmailAlreadyTaken,
+    EmailAlreadyTakenError,
     EmailValidationError,
-    PasswordDontMatch,
-    UsernameAlreadyTaken,
+    PasswordDontMatchError,
+    UsernameAlreadyTakenError,
 )
 from app.core.errors.validation import (
     PasswordValidationError,
     UsernameValidationError,
 )
-from app.api.schemas.user_dto import UserCreateDTO, UserDTO
+from app.core.services.user_service import UserService
 
 
 @post(
@@ -55,11 +55,11 @@ async def create_user(
         return UserDTO.fromrow(user.__dict__)
 
     except (
-        PasswordDontMatch,
+        PasswordDontMatchError,
         PasswordValidationError,
         EmailValidationError,
         UsernameValidationError,
-        EmailAlreadyTaken,
-        UsernameAlreadyTaken,
+        EmailAlreadyTakenError,
+        UsernameAlreadyTakenError,
     ) as e:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e)) from e

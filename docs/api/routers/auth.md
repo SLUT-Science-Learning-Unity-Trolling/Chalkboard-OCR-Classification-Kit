@@ -1,3 +1,7 @@
+# Модуль auth
+
+Модуль содержит эндпоинты авторизации и выхода из профиля.
+
 ## def auth_user:
 #### Эндпоинт для авторизации пользователя с установкой JWT в cookie.
 #### Маршруты:
@@ -53,12 +57,10 @@ async def auth_user(
         )
         return response
 
-    except InvalidEmailOrPassword as e:
-        print(f"Unexpected error: {str(e)}")
-
+    except InvalidEmailOrPasswordError:
         raise HTTPException(
             status_code=500, detail="Internal server error occurred"
-        )
+        ) from None
 ```
 ---
 ## def logout_user:
@@ -71,6 +73,7 @@ async def auth_user(
 @post("/auth/logout", status_code=HTTP_200_OK)
 async def logout_user() -> Response:
     """Эндпоинт выхода из профиля.
+
     Удаляет JWT из cookie, разлогинивая пользователя.
     """
     response = Response({"detail": "Logged out successfully"})
@@ -85,12 +88,10 @@ async def logout_user() -> Response:
 ## def get_me:
 #### Эндпоинт возвращает данные текущего пользователя.
 #### Маршруты:
-- `@get( "/me", dependencies={"current_user": Provide(AuthService.get_current_user)} )`
+- `@get("/me", dependencies={"current_user": Provide(AuthService.get_current_user)})`
 
 ```python
-@get(
-    "/me", dependencies={"current_user": Provide(AuthService.get_current_user)}
-)
+@get("/me", dependencies={"current_user": Provide(AuthService.get_current_user)})
 async def get_me(current_user: UserDTO | None) -> dict[str, Any]:
     """Эндпоинт возвращает данные текущего пользователя."""
     if current_user:

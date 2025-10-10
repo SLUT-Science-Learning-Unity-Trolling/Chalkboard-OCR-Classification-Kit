@@ -1,3 +1,7 @@
+# Модуль user_service
+
+Модуль содержит класс UserService для работы с пользователями.
+
 ## Класс UserService
 
 **Сервис для работы с пользователями.**
@@ -91,7 +95,7 @@
             UserCreationError: Если произошла ошибка при создании пользователя.
         """
         if password != repeat_password:
-            raise PasswordDontMatch
+            raise PasswordDontMatchError
 
         if not await self._validator.validate_password(password):
             raise PasswordValidationError
@@ -102,14 +106,14 @@
         existing_user = await self.does_user_exists(username, email)
         if existing_user:
             if existing_user.get("username") == username:
-                raise UsernameAlreadyTaken
+                raise UsernameAlreadyTakenError
             if existing_user.get("email") == email.lower():
-                raise EmailAlreadyTaken
+                raise EmailAlreadyTakenError
 
         try:
             validate_email(email, test_environment=config.Config.DEBUG)
         except EmailNotValidError:
-            raise EmailValidationError("Введите корректный email")
+            raise EmailValidationError("Введите корректный email") from None
 
         salt, _hash = self._security.hash_password(password)
         password_hash = self._security.serialize_hash(salt, _hash)
@@ -123,7 +127,7 @@
             id = await self._repo.add(user_data)
 
         except Exception:
-            raise UserCreationError("Произошла ошибка")
+            raise UserCreationError("Произошла ошибка") from None
 
         user = await self._repo.get_one({"_id": id})
 

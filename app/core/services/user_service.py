@@ -1,25 +1,26 @@
-# -*- coding: utf-8 -*-
+"""Модуль содержит класс UserService для работы с пользователями."""
 # UserService
 
 from typing import Any
+
 from bson import ObjectId
 from email_validator import EmailNotValidError, validate_email
 
 from app import config
+from app.adapters.repositories.abc_repo import RepositoryInterface
 from app.core.domain.models.user import User
-from app.core.services.security_service import SecurityService
 from app.core.errors.auth import (
-    EmailAlreadyTaken,
+    EmailAlreadyTakenError,
     EmailValidationError,
-    PasswordDontMatch,
-    UsernameAlreadyTaken,
+    PasswordDontMatchError,
+    UsernameAlreadyTakenError,
 )
+from app.core.errors.user import UserCreationError
 from app.core.errors.validation import (
     PasswordValidationError,
     UsernameValidationError,
 )
-from app.core.errors.user import UserCreationError
-from app.adapters.repositories.abc_repo import RepositoryInterface
+from app.core.services.security_service import SecurityService
 from app.core.services.validation_service import ValidationService
 
 
@@ -72,7 +73,7 @@ class UserService:
             UserCreationError: Если произошла ошибка при создании пользователя.
         """
         if password != repeat_password:
-            raise PasswordDontMatch
+            raise PasswordDontMatchError
 
         if not await self._validator.validate_password(password):
             raise PasswordValidationError
@@ -83,14 +84,14 @@ class UserService:
         existing_user = await self.does_user_exists(username, email)
         if existing_user:
             if existing_user.get("username") == username:
-                raise UsernameAlreadyTaken
+                raise UsernameAlreadyTakenError
             if existing_user.get("email") == email.lower():
-                raise EmailAlreadyTaken
+                raise EmailAlreadyTakenError
 
         try:
             validate_email(email, test_environment=config.Config.DEBUG)
         except EmailNotValidError:
-            raise EmailValidationError("Введите корректный email")
+            raise EmailValidationError("Введите корректный email") from None
 
         salt, _hash = self._security.hash_password(password)
         password_hash = self._security.serialize_hash(salt, _hash)
@@ -104,7 +105,7 @@ class UserService:
             id = await self._repo.add(user_data)
 
         except Exception:
-            raise UserCreationError("Произошла ошибка")
+            raise UserCreationError("Произошла ошибка") from None
 
         user = await self._repo.get_one({"_id": id})
 

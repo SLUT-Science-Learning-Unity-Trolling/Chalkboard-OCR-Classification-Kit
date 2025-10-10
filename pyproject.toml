@@ -52,8 +52,8 @@ expire = 1209600
 
 # ---------------- Ruff ----------------
 [tool.ruff]
-target-version = "py39"
-line-length = 80
+target-version = "py311"
+line-length = 88
 exclude = ["*__init__.py", "tests/", "*exceptions/"]
 
 [tool.ruff.format]
@@ -62,8 +62,9 @@ indent-style = "space"
 line-ending = "auto"
 
 [tool.ruff.lint]
-extend-select = ["UP", "D"]
-ignore = ["UP009", "D100", "D205"]
+extend-select = ["UP", "D", "E", "W", "F", "B", "I", "N", "ANN", "S"]
+ignore = ["UP007", "UP038", "ANN401", "S104", "S607", "S603"]
+extend-ignore = ["E501"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

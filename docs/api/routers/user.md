@@ -1,3 +1,7 @@
+# Модуль user
+
+Модуль содержит эндпоинты для работы с пользователями.
+
 ## def create_user:
 #### Эндпоинт создания пользователя.
 #### Маршруты:
@@ -45,13 +49,13 @@ async def create_user(
         return UserDTO.fromrow(user.__dict__)
 
     except (
-        PasswordDontMatch,
+        PasswordDontMatchError,
         PasswordValidationError,
         EmailValidationError,
         UsernameValidationError,
-        EmailAlreadyTaken,
-        UsernameAlreadyTaken,
+        EmailAlreadyTakenError,
+        UsernameAlreadyTakenError,
     ) as e:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e)) from e
 ```
 ---

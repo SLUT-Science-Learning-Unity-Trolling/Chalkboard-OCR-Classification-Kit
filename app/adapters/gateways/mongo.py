@@ -1,13 +1,11 @@
-# -*- coding: utf-8 -*-
+"""Модуль содержит класс MongoGateway для подключения к базе данных MongoDB."""
 # MongoGateway
-
-from typing import Optional
 
 from pymongo import AsyncMongoClient
 from pymongo.asynchronous.collection import AsyncCollection
+from pymongo.database import Database
 
 from app.config import Config
-from pymongo.database import Database
 
 
 class MongoGateway:
@@ -30,7 +28,7 @@ class MongoGateway:
         self._database = Config.DATABASE_NAME
         self._username = Config.DATABASE_USER
         self._password = Config.DATABASE_PASSWORD
-        self._client: Optional[AsyncMongoClient] = None
+        self._client: AsyncMongoClient | None = None
 
         if not self._uri:
             raise ValueError("DATABASE_URL is not set in configuration")
@@ -41,7 +39,7 @@ class MongoGateway:
             self._client = AsyncMongoClient(self._uri)
             await self._client.admin.command("ping")
         except Exception as e:
-            raise ConnectionError(f"Failed to connect to MongoDB: {str(e)}")
+            raise ConnectionError(f"Failed to connect to MongoDB: {str(e)}") from e
 
     async def get_database(self) -> Database:
         """Возвращает объект базы данных."""

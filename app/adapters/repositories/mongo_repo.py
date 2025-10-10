@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+"""Модуль содержит класс MongoRepo для работы с базой данных MongoDB."""
 # MongoRepo
 
 from typing import Any
@@ -37,9 +37,7 @@ class MongoRepo(RepositoryInterface):
     CRUD операции для работы с документами.
     """
 
-    def __init__(
-        self, gateway: DBGatewayInterface, collection_name: str
-    ) -> None:
+    def __init__(self, gateway: DBGatewayInterface, collection_name: str) -> None:
         """Инициализация репозитория.
 
         Args:
@@ -112,9 +110,7 @@ class MongoRepo(RepositoryInterface):
             dict[str, Any] | None: Обновленный документ или None, если документ не найден.
         """
         collection = await self._init_collection()
-        result = await collection.find_one_and_update(
-            filter=query, update=update_data
-        )
+        result = await collection.find_one_and_update(filter=query, update=update_data)
         return result
 
     async def delete(self, query: dict[str, Any]) -> bool:
@@ -134,4 +130,4 @@ class MongoRepo(RepositoryInterface):
             await collection.find_one_and_delete(query)
             return True
         except Exception as e:
-            raise ValueError(e)
+            raise ValueError(f"Ошибка при удалении документа: {e}") from e

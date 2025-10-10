@@ -1,3 +1,7 @@
+# Модуль abc_repo
+
+Модуль содержит абстрактный репозиторий для работы с БД.
+
 ## Класс RepositoryInterface
 
 **Базовый репозиторий для работы с с БД.**
@@ -66,9 +70,7 @@
 
 ```python
     @abstractmethod
-    async def get_many(
-        self, query: dict[str, Any], limit: int
-    ) -> list[dict[str, Any]]:
+    async def get_many(self, query: dict[str, Any], limit: int) -> list[dict[str, Any]]:
         """Получение нескольких объектов.
 
         Args:

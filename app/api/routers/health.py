@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+"""Модуль содержит эндпоинты для проверки работы сервера и подключения к MongoDB."""
 # API_Health
 
 from litestar import get
@@ -8,6 +8,7 @@ from pymongo.errors import ConnectionFailure
 from starlette.responses import JSONResponse
 
 from app.config import Config
+
 
 client = AsyncMongoClient(Config.DATABASE_URL)
 

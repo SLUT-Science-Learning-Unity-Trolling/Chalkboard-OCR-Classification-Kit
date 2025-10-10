@@ -1,7 +1,8 @@
-# -*- coding: utf-8 -*-
+"""Модуль содержит схемы для работы с пользователями."""
 # UserDTO
 
 from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Any
 

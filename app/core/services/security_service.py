@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+"""Модуль содержит класс SecurityService для работы с хэшированием паролей."""
 # SecurityService
 
 from jam import utils

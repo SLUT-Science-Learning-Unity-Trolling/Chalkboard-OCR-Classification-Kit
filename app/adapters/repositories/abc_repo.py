@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+"""Модуль содержит абстрактный репозиторий для работы с БД."""
+
 # RepositoryInterface
 from abc import ABC, abstractmethod
 from typing import Any
@@ -32,9 +33,7 @@ class RepositoryInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def get_many(
-        self, query: dict[str, Any], limit: int
-    ) -> list[dict[str, Any]]:
+    async def get_many(self, query: dict[str, Any], limit: int) -> list[dict[str, Any]]:
         """Получение нескольких объектов.
 
         Args:

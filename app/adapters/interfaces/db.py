@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+"""Модуль содержит интерфейс DBGatewayInterface для работы с базой данных."""
 # DBGatewayInterface
 
 from abc import ABC, abstractmethod

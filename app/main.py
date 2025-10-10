@@ -1,12 +1,12 @@
-# -*- coding: utf-8 -*-
+"""Модуль для запуска сервера."""
 # Main
 
 from litestar import Litestar
 from litestar.openapi import OpenAPIConfig
 
+from app.api.routers.auth import auth_user, get_me, logout_user
 from app.api.routers.health import db_health_check, server_health_check
 from app.api.routers.user import create_user
-from app.api.routers.auth import logout_user, get_me, auth_user
 from app.container import build_container
 
 
@@ -34,4 +34,4 @@ app = Litestar(
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8001, log_level="debug")
+    uvicorn.run(app, host="127.0.0.1", port=8001, log_level="debug")

@@ -1,18 +1,19 @@
-# -*- coding: utf-8 -*-
+"""Модуль содержит класс AuthService для аутентификации пользователей."""
 # AuthService
 
-from typing import Optional
-from punq import Container
 import re
 
 from litestar import Request
+from punq import Container
+
+from app.adapters.repositories.abc_repo import RepositoryInterface
+from app.api.schemas.user_dto import UserDTO
+from app.config import config, jam
+from app.core.errors.auth import (
+    InvalidEmailOrPasswordError,
+)
 from app.core.services.security_service import SecurityService
 from app.core.services.user_service import UserService
-from app.core.errors.auth import InvalidEmailOrPassword
-from app.adapters.repositories.abc_repo import RepositoryInterface
-from app.config import jam
-from app.config import config
-from app.api.schemas.user_dto import UserDTO
 
 
 class AuthService:
@@ -61,13 +62,11 @@ class AuthService:
 
         user = await self._repo.get_one(query)
         if not user:
-            raise InvalidEmailOrPassword
+            raise InvalidEmailOrPasswordError
 
         hash, salt = self._security.deserialize_hash(user["password_hash"])
-        if not self._security.verify_hash(
-            password=password, salt=salt, hash_=hash
-        ):
-            raise InvalidEmailOrPassword
+        if not self._security.verify_hash(password=password, salt=salt, hash_=hash):
+            raise InvalidEmailOrPasswordError
 
         payload = jam.make_payload(
             exp=config.JWT_EXPIRE_TIME,
@@ -91,7 +90,7 @@ class AuthService:
     @staticmethod
     async def get_current_user(
         request: Request, container: Container
-    ) -> Optional[UserDTO]:
+    ) -> UserDTO | None:
         """Возвращает текущего авторизованного пользователя.
 
         Проверяет JWT-токен в cookies запроса, извлекает пользователя из базы

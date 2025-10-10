@@ -1,3 +1,7 @@
+# Модуль generate_docs
+
+Модуль для генерации Markdown-документации.
+
 ## def parse_google_docstring:
 #### Парсит Google-style докстринг в структуру словаря.
 
@@ -122,9 +126,7 @@ def extract_docstrings(file_path: Path) -> dict[Any, Any]:
             class_doc["methods"] = {}
             for cnode in node.body:
                 if isinstance(cnode, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    method_doc = parse_google_docstring(
-                        ast.get_docstring(cnode) or ""
-                    )
+                    method_doc = parse_google_docstring(ast.get_docstring(cnode) or "")
                     method_doc["body"] = get_function_body(file_path, cnode)
                     class_doc["methods"][cnode.name] = method_doc
             docstrings["classes"][node.name] = class_doc
@@ -168,9 +170,7 @@ def get_function_body(
 
     start_line = node.lineno - 1
     if hasattr(node, "decorator_list") and node.decorator_list:
-        decorator_start = min(
-            decorator.lineno - 1 for decorator in node.decorator_list
-        )
+        decorator_start = min(decorator.lineno - 1 for decorator in node.decorator_list)
         start_line = decorator_start
         while start_line > 0 and lines[start_line - 1].strip().startswith("@"):
             start_line -= 1
@@ -205,9 +205,7 @@ def get_function_body(
 | `str` | Сформатированный Markdown. |
 
 ```python
-def format_function_md(
-    name: str, doc: dict[str, Any], is_method: bool = False
-) -> str:
+def format_function_md(name: str, doc: dict[str, Any], is_method: bool = False) -> str:
     """Форматирует функцию или метод в Markdown с таблицами аргументов, возвращаемых значений и исключений.
 
     Args:
@@ -219,7 +217,6 @@ def format_function_md(
         str: Сформатированный Markdown.
     """
     display_name = name.replace("__init__", "init")
-    # Determine if the function is async by checking the body
     is_async = doc["body"].strip().startswith("async def")
     prefix = "async def" if is_async else "def"
     md = [f"## {prefix} {display_name}:"]
@@ -232,8 +229,8 @@ def format_function_md(
 
     # HTTP route
     if "@" in doc["body"]:
-        route_lines = []
-        current_route = []
+        route_lines: list[str] = []
+        current_route: list[str] = []
         for line in doc["body"].splitlines():
             line_strip = line.strip()
             if line_strip.startswith(("@get", "@post", "@put", "@delete")) or (
@@ -261,9 +258,7 @@ def format_function_md(
                     desc = parts[1].strip()
                     if "(" in name_type and ")" in name_type:
                         arg_name = name_type.split("(")[0].strip()
-                        arg_type = (
-                            name_type.split("(")[1].replace(")", "").strip()
-                        )
+                        arg_type = name_type.split("(")[1].replace(")", "").strip()
                     else:
                         arg_name = name_type
                         arg_type = ""
@@ -336,9 +331,7 @@ def write_md(file_path: Path, docstrings: dict[str, Any]) -> str:
     md_content = []
 
     if docstrings.get("module"):
-        md_content.append(
-            f"# Модуль {file_path.stem}\n\n{docstrings['module']}\n"
-        )
+        md_content.append(f"# Модуль {file_path.stem}\n\n{docstrings['module']}\n")
 
     for cls_name, cls_doc in docstrings.get("classes", {}).items():
         md_content.append(f"## Класс {cls_name}\n")
@@ -390,7 +383,7 @@ def create_docs(src_dirs: list[Path], dst_dir: Path) -> None:
         dst_dir (Path): Папка, куда будут сохранены сгенерированные Markdown-файлы.
     """
     for src_dir in src_dirs:
-        for root, dirs, files in os.walk(src_dir):
+        for root, _dirs, files in os.walk(src_dir):
             rel_path = Path(root).relative_to(src_dir)
             target_dir = dst_dir / rel_path
             target_dir.mkdir(parents=True, exist_ok=True)
@@ -422,6 +415,7 @@ def create_docs(src_dirs: list[Path], dst_dir: Path) -> None:
 ```python
 def rename_wiki_files_by_header(local_wiki_dir: Path, docs_dir: Path) -> None:
     """Переименовывает .md файлы в .wiki_tmp на основании второй строки исходных .py файлов.
+
     Если вторая строка файла начинается с # , используется её содержимое (без решётки и пробелов) как новое имя Markdown-файла.
     Если такого заголовка нет, имя остаётся прежним.
 
@@ -464,9 +458,7 @@ def rename_wiki_files_by_header(local_wiki_dir: Path, docs_dir: Path) -> None:
                     new_md_path = md_path.with_name(new_md_name)
                     if new_md_path != md_path:
                         os.rename(md_path, new_md_path)
-                        print(
-                            f"[Wiki] Переименован: {md_path.name} → {new_md_name}"
-                        )
+                        print(f"[Wiki] Переименован: {md_path.name} → {new_md_name}")
             except Exception as e:
                 print(f"[Wiki] Ошибка при обработке {md_path}: {e}")
 ```
@@ -487,9 +479,7 @@ def push_to_wiki(docs_dir: Path) -> None:
         docs_dir (Path): Папка с сгенерированной документацией.
     """
     if not LOCAL_WIKI_DIR.exists():
-        subprocess.run(
-            ["git", "clone", WIKI_REPO, str(LOCAL_WIKI_DIR)], check=True
-        )
+        subprocess.run(["git", "clone", WIKI_REPO, str(LOCAL_WIKI_DIR)], check=True)
 
     for root, _, files in os.walk(docs_dir):
         rel_path = Path(root).relative_to(docs_dir)

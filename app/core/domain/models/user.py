@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+"""Модуль содержит доменную модель пользователя."""
+
 # UserDE
 from dataclasses import dataclass
 

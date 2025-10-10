@@ -1,7 +1,8 @@
-# -*- coding: utf-8 -*-
+"""Модуль содержит класс ValidationService для валидации данных."""
 # ValidationService
 
 import re
+
 from app import config
 from app.core.errors.validation import (
     PasswordValidationError,
@@ -12,7 +13,7 @@ from app.core.errors.validation import (
 class ValidationService:
     """Сервис валидации."""
 
-    def __init__(self, config=config.Config) -> None:  # type: ignore
+    def __init__(self, config: type[config.Config] = config.Config) -> None:
         """Инциализация.
 
         Args:
@@ -38,9 +39,7 @@ class ValidationService:
             )
 
         if not any(char.isdigit() for char in password):
-            raise PasswordValidationError(
-                "Пароль должен содержать хотя бы одну цифру."
-            )
+            raise PasswordValidationError("Пароль должен содержать хотя бы одну цифру.")
 
         if not any(char.isupper() for char in password):
             raise PasswordValidationError(
@@ -52,9 +51,7 @@ class ValidationService:
                 "Пароль должен содержать хотя бы одну строчную букву."
             )
 
-        if not any(
-            char in self.config.PASSWORD_SPEC_SYMBOLS for char in password
-        ):
+        if not any(char in self.config.PASSWORD_SPEC_SYMBOLS for char in password):
             raise PasswordValidationError(
                 f"Пароль должен содержать хотя бы один спец. символ из {self.config.PASSWORD_SPEC_SYMBOLS}."
             )
