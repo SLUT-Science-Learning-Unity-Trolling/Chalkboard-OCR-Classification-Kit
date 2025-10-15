@@ -5,7 +5,11 @@ from litestar import Litestar
 from litestar.openapi import OpenAPIConfig
 
 from app.api.routers.auth import auth_user, get_me, logout_user
-from app.api.routers.health import db_health_check, server_health_check
+from app.api.routers.health import (
+    db_health_check,
+    minio_health_check,
+    server_health_check,
+)
 from app.api.routers.user import create_user
 from app.container import build_container
 
@@ -21,6 +25,7 @@ app = Litestar(
     route_handlers=[
         server_health_check,
         db_health_check,
+        minio_health_check,
         create_user,
         auth_user,
         logout_user,

@@ -207,7 +207,6 @@ marimo/_lsp/
 __marimo__/
 
 .vscode/
-docker-compose.yml
 redis.data/
 redis.conf/
 .benchmarks/

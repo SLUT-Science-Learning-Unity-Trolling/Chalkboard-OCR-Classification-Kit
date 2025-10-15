@@ -20,6 +20,11 @@ def build_container() -> Container:
         ),
     )
 
+    container.register(
+        MinioGateway,
+        factory=lambda: MinioGateway(),
+    )
+
     container.register(SecurityService, factory=lambda: SecurityService())
     container.register(ValidationService, factory=lambda: ValidationService())
 

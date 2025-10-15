@@ -4,6 +4,7 @@
 from punq import Container
 
 from app.adapters.gateways.mongo import MongoGateway
+from app.adapters.gateways.s3 import MinioGateway
 from app.adapters.repositories.mongo_repo import MongoRepo
 from app.config import Config
 from app.core.services.auth_service import AuthService
@@ -24,6 +25,11 @@ def build_container() -> Container:
             gateway=container.resolve(MongoGateway),
             collection_name="users",
         ),
+    )
+
+    container.register(
+        MinioGateway,
+        factory=lambda: MinioGateway(),
     )
 
     container.register(SecurityService, factory=lambda: SecurityService())
