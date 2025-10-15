@@ -1,13 +1,16 @@
 """Модуль для работы с MiniO."""
 # MiniO
 
+import io
+
 from boto3 import client
 from botocore.exceptions import ClientError
 
+from app.adapters.interfaces.s3 import S3Interface
 from app.config import Config
 
 
-class MinioGateway:
+class MinioGateway(S3Interface):
     """Класс для работы с MiniO."""
 
     def __init__(self) -> None:
@@ -18,11 +21,13 @@ class MinioGateway:
           self._access_key (str): Ключ доступа к MiniO.
           self._secret_key (str): Секретный ключ доступа к MiniO.
           self._bucket (str): Имя бакета в MiniO.
+          self.connect(): Устанавливает соединение с MiniO.
         """
         self._endpoint = Config.MINIO_ENDPOINT
         self._access_key = Config.MINIO_ACCESS_KEY
         self._secret_key = Config.MINIO_SECRET_KEY
         self._bucket = Config.MINIO_BUCKET
+        self.connect()
 
     def connect(self) -> None:
         """Устанавливает соединение с MiniO."""
@@ -54,6 +59,34 @@ class MinioGateway:
         except ClientError as e:
             raise Exception(f"Ошибка загрузки файла: {str(e)}") from e
 
+    def put_object(
+        self,
+        object_name: str,
+        data: io.BytesIO,
+        size: int,
+        content_type: str = "application/octet-stream",
+    ) -> None:
+        """Загружает объект в MinIO напрямую из потока.
+
+        Args:
+            object_name (str): Имя объекта в MiniO.
+            data (io.BytesIO): Поток данных.
+            size (int): Размер данных.
+            content_type (str): Тип содержимого (по умолчанию "application/octet-stream").
+        """
+        if not self._client:
+            self.connect()
+        try:
+            self._client.put_object(
+                Bucket=self._bucket,
+                Key=object_name,
+                Body=data,
+                ContentLength=size,
+                ContentType=content_type,
+            )
+        except ClientError as e:
+            raise Exception(f"Ошибка загрузки файла: {str(e)}") from e
+
     def download_file(self, object_name: str, file_path: str) -> None:
         """Скачивает файл из MiniO.
 
@@ -70,7 +103,7 @@ class MinioGateway:
         """Удаляет файл из MiniO.
 
         Args:
-                        object_name (str): Имя объекта в MiniO.
+            object_name (str): Имя объекта в MiniO.
         """
         try:
             self._client.delete_object(Bucket=self._bucket, Key=object_name)
@@ -82,7 +115,7 @@ class MinioGateway:
 
         Args:
         object_name (str): Имя объекта в MiniO.
-        expiration (int): Время действия ссылки в секундах. По умолчанию 3600 секунд (1 час).
+        expiration (int): Время действия ссылки в секундах (1 час).
 
         Returns:
           str: Временная ссылка для доступа к файлу.

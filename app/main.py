@@ -10,7 +10,12 @@ from app.api.routers.health import (
     minio_health_check,
     server_health_check,
 )
-from app.api.routers.user import create_user
+from app.api.routers.user import (
+    create_user,
+    delete_image,
+    get_all_user_images,
+    upload_image,
+)
 from app.container import build_container
 
 
@@ -27,6 +32,9 @@ app = Litestar(
         db_health_check,
         minio_health_check,
         create_user,
+        upload_image,
+        get_all_user_images,
+        delete_image,
         auth_user,
         logout_user,
         get_me,

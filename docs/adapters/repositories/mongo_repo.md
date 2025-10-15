@@ -120,7 +120,7 @@ CRUD операции для работы с документами.
 
 ```python
     async def get_many(
-        self, query: dict[str, Any], limit: int = 10
+        self, query: dict[str, Any], limit: int = 1000
     ) -> list[dict[str, Any]]:
         """Получает несколько документов из коллекции.
 

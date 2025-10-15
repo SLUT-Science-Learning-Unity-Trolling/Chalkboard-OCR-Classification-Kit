@@ -1,13 +1,20 @@
 """Модуль содержит класс UserService для работы с пользователями."""
 # UserService
 
+import io
+
+from time import time
 from typing import Any
+from uuid import uuid4
 
 from bson import ObjectId
 from email_validator import EmailNotValidError, validate_email
+from litestar.datastructures import UploadFile
 
 from app import config
+from app.adapters.gateways.s3 import MinioGateway
 from app.adapters.repositories.abc_repo import RepositoryInterface
+from app.core.domain.models.image import UploadedImage
 from app.core.domain.models.user import User
 from app.core.errors.auth import (
     EmailAlreadyTakenError,
@@ -15,8 +22,16 @@ from app.core.errors.auth import (
     PasswordDontMatchError,
     UsernameAlreadyTakenError,
 )
-from app.core.errors.user import UserCreationError
+from app.core.errors.user import (
+    AbsentUserError,
+    DeleteImageError,
+    GetImagesError,
+    ImageUploadError,
+    UserCreationError,
+)
 from app.core.errors.validation import (
+    ImageExtensionValidationError,
+    ImageNotFoundError,
     PasswordValidationError,
     UsernameValidationError,
 )
@@ -29,22 +44,26 @@ class UserService:
 
     def __init__(
         self,
-        repository: RepositoryInterface,
+        user_repo: RepositoryInterface,
+        image_repo: RepositoryInterface,
         security: SecurityService,
         validator: ValidationService,
+        storage: MinioGateway,
     ) -> None:
         """Конструктор.
 
         Args:
-            repository (RepositoryInterface): Репозиторий
+            user_repo (RepositoryInterface): Репозиторий пользователей
+            image_repo (RepositoryInterface): Репозиторий изображений
             security (SecurityService): Секьюрити сервис
             validator (ValidationService): Сервис валидации
-        Returns:
-            None
+            storage (MinioGateway): Сервис хранилища
         """
-        self._repo = repository
+        self._user_repo = user_repo
+        self._image_repo = image_repo
         self._security = security
         self._validator = validator
+        self._storage = storage
 
     async def create_user(
         self, username: str, email: str, password: str, repeat_password: str
@@ -102,12 +121,12 @@ class UserService:
             "password_hash": password_hash,
         }
         try:
-            id = await self._repo.add(user_data)
+            id = await self._user_repo.add(user_data)
 
         except Exception:
             raise UserCreationError("Произошла ошибка") from None
 
-        user = await self._repo.get_one({"_id": id})
+        user = await self._user_repo.get_one({"_id": id})
 
         return User(**user)
 
@@ -120,7 +139,7 @@ class UserService:
         Returns:
             dict[str, Any]: Пользователь
         """
-        user = await self._repo.get_one({"_id": ObjectId(user_id)})
+        user = await self._user_repo.get_one({"_id": ObjectId(user_id)})
         return user
 
     async def does_user_exists(
@@ -135,9 +154,106 @@ class UserService:
         Returns:
             dict[str, Any] | None: Пользователь или None
         """
-        user = await self._repo.get_one({"username": username})
+        user = await self._user_repo.get_one({"username": username})
         if user:
             return user
 
-        user = await self._repo.get_one({"email": email.lower()})
+        user = await self._user_repo.get_one({"email": email.lower()})
         return user
+
+    async def upload_image(self, user_id: str, file: UploadFile) -> UploadedImage:
+        """Загружает локальное изображение пользователя.
+
+        Args:
+            user_id: ID пользователя
+            file: Локальный файл (UploadFile)
+
+        Returns:
+            UploadedImage: Загруженное изображение
+        """
+        if not await self._validator.validate_image_extension(file):
+            raise ImageExtensionValidationError(
+                "Расширение должно быть одним из списка: .jpg, .jpeg, .png, .tif, .tiff"
+            )
+
+        content = await file.read()
+        raw_image = io.BytesIO(content)
+        raw_img_size = len(content)
+        filename = file.filename
+
+        unique_filename = f"{uuid4()}_{filename}"
+        try:
+            self._storage.put_object(
+                object_name=unique_filename, data=raw_image, size=raw_img_size
+            )
+        except Exception:
+            raise ImageUploadError(
+                "Произошла ошибка при загрузке изображения",
+            ) from None
+
+        endpoint = self._storage._client.meta.endpoint_url.rstrip("/")
+        url = f"{endpoint}/{self._storage._bucket}/{unique_filename}"
+
+        image_data = {
+            "_user_id": ObjectId(user_id),
+            "url": url,
+            "uploaded_at": int(time()),
+        }
+
+        try:
+            id = await self._image_repo.add(image_data)
+            image = await self._image_repo.get_one({"_id": id})
+
+        except Exception:
+            raise ImageUploadError(
+                "Произошла ошибка при загрузке изображения"
+            ) from None
+
+        return UploadedImage(**image)
+
+    async def get_all_user_images(self, user_id: str) -> list[UploadedImage]:
+        """Возвращает все изображения пользователя.
+
+        Args:
+            user_id (str): Уникальный идентификатор пользователя
+
+        Returns:
+            list[UploadedImage]: Список изображений пользователя
+        """
+        try:
+            images = await self._image_repo.get_many(
+                {"_user_id": ObjectId(user_id)}, limit=30
+            )
+
+        except GetImagesError:
+            raise GetImagesError("Произошла ошибка при получении картинок") from None
+
+        return [UploadedImage(**image) for image in images]
+
+    async def delete_image(self, url: str, user_id: str) -> None:
+        """Удаляет изображение пользователя.
+
+        Args:
+            url (str): Путь к изображению
+            user_id (str): Уникальный идентификатор пользователя
+        """
+        user = await self._user_repo.get_one({"_id": ObjectId(user_id)})
+        if not user:
+            raise AbsentUserError("Пользователь не найден")
+
+        image = await self._image_repo.get_one({"url": url})
+        if not image:
+            raise ImageNotFoundError("Картинка не найдена")
+
+        if user.get("_id") != image.get("_user_id"):
+            raise DeleteImageError("Нельзя удалить картинку чужого пользователя")
+
+        try:
+            await self._image_repo.delete({"url": url})
+        except Exception:
+            raise DeleteImageError("Произошла ошибка при удалении картинки") from None
+
+        try:
+            self._storage.delete_file(url.split("/")[-1])
+        except Exception:
+            raise DeleteImageError("Произошла ошибка при удалении картинки") from None

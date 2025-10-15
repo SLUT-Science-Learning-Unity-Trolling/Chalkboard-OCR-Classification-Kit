@@ -1,7 +1,10 @@
 """Модуль содержит класс ValidationService для валидации данных."""
 # ValidationService
 
+import os
 import re
+
+from litestar.datastructures import UploadFile
 
 from app import config
 from app.core.errors.validation import (
@@ -91,3 +94,19 @@ class ValidationService:
             )
 
         return True
+
+    async def validate_image_extension(self, file: UploadFile) -> bool:
+        """Проверка расширения файла.
+
+        Args:
+            file (str | UploadFile): Имя файла или объект UploadFile
+
+        Returns:
+            bool: True, если расширение файла валидно
+        """
+        filename = file.filename
+
+        _, ext = os.path.splitext(filename)
+        ext = ext.lower().lstrip(".")
+
+        return ext in self.config.ALLOWED_IMAGE_EXTENSIONS

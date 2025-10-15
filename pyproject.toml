@@ -21,7 +21,7 @@ pygments = "^2.19.2"
 # --- Web & API ---
 starlette = "^0.48.0"
 uvicorn = "^0.36.0"
-litestar = "^2.17.0"
+litestar = {extras = ["standard"], version = "^2.18.0"}
 
 # --- Utility / Additional libs ---
 jamlib = "^2.3.0"

@@ -52,6 +52,7 @@ async def auth_user(
             value=token,
             httponly=True,
             secure=True,
+            expires=config.JWT_EXPIRE_TIME,
             samesite="strict",
             path="/",
         )
@@ -90,10 +91,27 @@ async def logout_user() -> Response:
 #### Маршруты:
 - `@get("/me", dependencies={"current_user": Provide(AuthService.get_current_user)})`
 
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `current_user` | `UserDTO | None` | Пользователь |
+
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `dict[str, Any]` | Данные пользователя |
+
 ```python
 @get("/me", dependencies={"current_user": Provide(AuthService.get_current_user)})
 async def get_me(current_user: UserDTO | None) -> dict[str, Any]:
-    """Эндпоинт возвращает данные текущего пользователя."""
+    """Эндпоинт возвращает данные текущего пользователя.
+
+    Args:
+        current_user (UserDTO | None): Пользователь
+
+    Returns:
+        dict[str, Any]: Данные пользователя
+    """
     if current_user:
         return {"success": True, "user": current_user}
 

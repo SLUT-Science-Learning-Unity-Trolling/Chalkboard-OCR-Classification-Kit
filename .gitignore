@@ -212,3 +212,4 @@ redis.conf/
 .benchmarks/
 /wiki
 .wiki_tmp/
+certs

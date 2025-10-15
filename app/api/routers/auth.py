@@ -14,6 +14,7 @@ from litestar.status_codes import (
 from punq import Container
 
 from app.api.schemas.user_dto import UserDTO, UserLoginDTO
+from app.config import config
 from app.core.errors.auth import InvalidEmailOrPasswordError
 from app.core.services.auth_service import AuthService
 
@@ -51,6 +52,7 @@ async def auth_user(
             value=token,
             httponly=True,
             secure=True,
+            expires=config.JWT_EXPIRE_TIME,
             samesite="strict",
             path="/",
         )
@@ -79,7 +81,14 @@ async def logout_user() -> Response:
 
 @get("/me", dependencies={"current_user": Provide(AuthService.get_current_user)})
 async def get_me(current_user: UserDTO | None) -> dict[str, Any]:
-    """Эндпоинт возвращает данные текущего пользователя."""
+    """Эндпоинт возвращает данные текущего пользователя.
+
+    Args:
+        current_user (UserDTO | None): Пользователь
+
+    Returns:
+        dict[str, Any]: Данные пользователя
+    """
     if current_user:
         return {"success": True, "user": current_user}
 

@@ -52,6 +52,7 @@ class Config:
         "_",
         "-",
     ]
+    ALLOWED_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "tif", "tiff"]
 
     """Конфигурация MinIO."""
     MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")

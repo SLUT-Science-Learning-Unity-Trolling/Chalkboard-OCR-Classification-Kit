@@ -140,3 +140,34 @@
         return True
 ```
 ---
+## async def validate_image_extension:
+#### Проверка расширения файла.
+
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `file` | `str | UploadFile` | Имя файла или объект UploadFile |
+
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `bool` | True, если расширение файла валидно |
+
+```python
+    async def validate_image_extension(self, file: UploadFile) -> bool:
+        """Проверка расширения файла.
+
+        Args:
+            file (str | UploadFile): Имя файла или объект UploadFile
+
+        Returns:
+            bool: True, если расширение файла валидно
+        """
+        filename = file.filename
+
+        _, ext = os.path.splitext(filename)
+        ext = ext.lower().lstrip(".")
+
+        return ext in self.config.ALLOWED_IMAGE_EXTENSIONS
+```
+---

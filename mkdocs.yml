@@ -33,6 +33,7 @@ nav:
       - Domain:
           - Models:
               - User: core/domain/models/user.md
+              - Image: core/domain/models/image.md
       - Services:
           - User Service: core/services/user_service.md
           - Auth Service: core/services/auth_service.md
@@ -50,16 +51,22 @@ nav:
           - Health: api/routers/health.md
       - Schemas:
           - User DTO: api/schemas/user_dto.md
+          - Image DTO: api/schemas/image_dto.md
   - Adapters:
       - Gateways:
           - Mongo Gateway: adapters/gateways/mongo.md
+          - Minio Gateway: adapters/gateways/s3.md
       - Repositories:
           - Abstract Repository: adapters/repositories/abc_repo.md
           - Mongo Repository: adapters/repositories/mongo_repo.md
+          - User Repository: adapters/repositories/user_repo.md
+          - Image Repository: adapters/repositories/image_repo.md
       - Interfaces:
           - Database Interface: adapters/interfaces/db.md
+          - Minio Interface: adapters/interfaces/s3.md
   - Main: main.md
   - Container: container.md
+  - Config: config.md
   - Тесты: tests/in_work.md
   - Скрипты: scripts/clean_project.md
   - Утилиты: utils/generate_docs.md
