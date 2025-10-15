@@ -2,6 +2,6 @@
 project_dirs = ["app", "tests"]
 docs_dir = "docs"
 supported_ext = [".py"]
-wiki_repo = "https://github.com/ProudRykar/GUTARIK/wiki.git"
+wiki_repo = "https://github.com/SLUT-Science-Learning-Unity-Trolling/Chalkboard-OCR-Classification-Kit/wiki.git"
 local_wiki_dir = ".wiki_tmp"
 exclude_dirs = []
