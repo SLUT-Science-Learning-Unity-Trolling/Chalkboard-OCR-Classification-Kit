@@ -16,6 +16,7 @@ from app.api.routers.user import (
     get_all_user_images,
     upload_image,
 )
+from app.api.routers.ocr import ocr_to_pdf
 from app.container import build_container
 
 
@@ -38,6 +39,7 @@ app = Litestar(
         auth_user,
         logout_user,
         get_me,
+        ocr_to_pdf,
     ],
     dependencies={"container": build_container},
     openapi_config=openapi_config,
