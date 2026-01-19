@@ -20,15 +20,24 @@ poetry env use python3.13
 
 ### Создайте .env в корне (Пример):
 ```bash
+# MongoDB
 DATABASE_HOST=localhost
+DATABASE_COMPOSE_HOST=mongo
 DATABASE_PORT=27017
 DATABASE_USER=admin
 DATABASE_PASSWORD=secret
-DATABASE_NAME=mongodb
+DATABASE_NAME=admin
 
-DEBUG=True
+# JWT
+JWT_SECRET_KEY=POPA
 
-JWT_SECRET_KEY=SECRET
+# MinIO
+MINIO_COMPOSE_ENDPOINT=http://minio:9000
+MINIO_ENDPOINT=http://localhost:9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_BUCKET=bucket
+
 ```
 
 ### Поднимите Mongo контейнер:

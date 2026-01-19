@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import logging
+import re
 import subprocess
 import tempfile
 from dataclasses import dataclass
@@ -24,8 +25,7 @@ MathDelims = Literal["dollars", "single_backslash"]
 # Engines
 # ============================================================
 
-
-def build_p2t_formula(device: str = "cpu") -> Pix2Text:
+def build_p2t_formula(device: str = "gpu") -> Pix2Text:
     total_configs = {"text_formula": {"languages": ("ru", "en")}}
     return Pix2Text.from_config(
         total_configs=total_configs,
@@ -35,7 +35,7 @@ def build_p2t_formula(device: str = "cpu") -> Pix2Text:
     )
 
 
-def build_paddle_ru(device: str = "cpu") -> PaddleOCR:
+def build_paddle_ru(device: str = "gpu") -> PaddleOCR:
     return PaddleOCR(
         lang="ru",
         device=device,
@@ -94,7 +94,7 @@ def _four_point_transform(image_bgr: np.ndarray, pts: np.ndarray) -> np.ndarray:
 
 
 def _find_largest_quad(
-    image_bgr: np.ndarray, detect_width: int = 1200
+    image_bgr: np.ndarray, detect_width: int = 2400
 ) -> Optional[np.ndarray]:
     h, w = image_bgr.shape[:2]
     if w > detect_width:
@@ -132,7 +132,7 @@ def _find_largest_quad(
     return None
 
 
-def _enhance_for_ocr(warped_bgr: np.ndarray, upscale: int = 2) -> Image.Image:
+def _enhance_for_ocr(warped_bgr: np.ndarray, upscale: int = 3) -> Image.Image:
     h_before, w_before = warped_bgr.shape[:2]
     logger.info(f"_enhance_for_ocr input: {w_before}x{h_before}")
 
@@ -166,8 +166,8 @@ def _enhance_for_ocr(warped_bgr: np.ndarray, upscale: int = 2) -> Image.Image:
 
 def preprocess_screen_photo(
     img_pil: Image.Image,
-    detect_width: int = 1200,
-    upscale: int = 2,
+    detect_width: int = 2400,
+    upscale: int = 3,
     fallback_crop: bool = True,
     skip_warp: bool = False,
 ) -> Image.Image:
@@ -180,8 +180,8 @@ def preprocess_screen_photo(
 
     w, h = img_pil.size
     aspect = w / h if h > 0 else 1.0
-    if skip_warp or (0.8 < aspect < 1.25):
-        logger.info(f"Skipping warp: aspect ratio {aspect:.2f}")
+    if skip_warp:
+        logger.info("Skipping warp by flag")
         if fallback_crop:
             m = int(min(w, h) * 0.05)
             img_pil = img_pil.crop((m, m, w - m, h - m))
@@ -223,7 +223,7 @@ def restore_paragraphs(text: str) -> str:
                 result.append("")
             elif next_line.startswith(("Определение", "Замечание", "Теорема", "Лемма")):
                 result.append("")
-
+    
     return "\n".join(result)
 
 
@@ -340,10 +340,12 @@ def _pix2text_detect_and_recognize_formulas(
     img0 = img_pil.convert("RGB")
     w, h = img0.size
 
-    ratio = resized_shape / float(max(1, w))
-    resized_hw = (max(1, int(h * ratio)), resized_shape)
+    # СТАЛО
+    analyzer_outs = tfo.mfd(
+        img0.copy(),
+        resized_shape=resized_shape,  # <-- ТОЛЬКО int
+    )
 
-    analyzer_outs = tfo.mfd(img0.copy(), resized_shape=resized_hw)
 
     patches: List[Image.Image] = []
     meta: List[dict] = []
@@ -463,6 +465,70 @@ def _paddle_text_boxes(paddle: PaddleOCR, img_bgr: np.ndarray) -> List[OcrBox]:
             outs.append(OcrBox(type="text", text=txt, score=score, box=box))
     return outs
 
+_MATH_BLOCK_RE = re.compile(
+    r"(\$\$.*?\$\$|\\\[.*?\\\]|\\\(.*?\\\))",
+    re.DOTALL,
+)
+
+_LAT2CYR = str.maketrans({
+    "a": "а", "A": "А",
+    "o": "о", "O": "О",
+    "e": "е", "E": "Е",
+    "c": "с", "C": "С",
+    "p": "р", "P": "Р",
+    "x": "х", "X": "Х",
+    "y": "у", "Y": "У",
+    "k": "к", "K": "К",
+    "m": "м", "M": "М",
+    "t": "т", "T": "Т",
+    "H": "Н", "B": "В",
+})
+
+_SIMPLE_TEXT_IN_MATH_RE = re.compile(
+    r"^\\mathrm\{([A-Za-zА-Яа-я0-9\s~]+)\}$"
+)
+
+def unwrap_plain_text_math(md: str) -> str:
+    """
+    Превращает
+      $$\mathrm{TEXT}$$
+    в
+      TEXT
+    если внутри нет математики
+    """
+    lines = md.splitlines()
+    out: list[str] = []
+
+    for line in lines:
+        s = line.strip()
+        if s.startswith("$$") and s.endswith("$$"):
+            body = s[2:-2].strip()
+            m = _SIMPLE_TEXT_IN_MATH_RE.match(body)
+            if m:
+                txt = m.group(1).replace("~", " ")
+                out.append(txt)
+                continue
+        out.append(line)
+
+    return "\n".join(out)
+
+def replace_lat_to_cyr_outside_math(text: str) -> str:
+    """
+    Заменяет латиницу на кириллицу ТОЛЬКО вне LaTeX-математики.
+    $$...$$, \[...\], \( ... \) не трогаются.
+    """
+    parts = _MATH_BLOCK_RE.split(text)
+    out: list[str] = []
+
+    for part in parts:
+        if not part:
+            continue
+        if _MATH_BLOCK_RE.fullmatch(part):
+            out.append(part)  # формулы — как есть
+        else:
+            out.append(part.translate(_LAT2CYR))
+
+    return "".join(out)
 
 def image_bytes_to_markdown(
     image_bytes: bytes,
@@ -481,8 +547,8 @@ def image_bytes_to_markdown(
 
     img = preprocess_screen_photo(
         img0,
-        detect_width=1200,
-        upscale=2,
+        detect_width=2400,
+        upscale=3,
         fallback_crop=True,
         skip_warp=skip_warp,
     )
@@ -505,6 +571,8 @@ def image_bytes_to_markdown(
 
     # 3) Merge -> Markdown
     md = _boxes_to_markdown(text_boxes + formula_boxes, math_delims=math_delims)
+    md = replace_lat_to_cyr_outside_math(md)
+    md = unwrap_plain_text_math(md)
     logger.info(f"OCR result length: {len(md.strip())}")
     return md.strip() or "(OCR вернул пустой результат)"
 
@@ -606,7 +674,7 @@ def image_bytes_to_pdf_bytes(image_bytes: bytes) -> bytes:
     img_test = Image.open(io.BytesIO(image_bytes))
     w, h = img_test.size
     aspect = w / h if h > 0 else 1.0
-    skip_warp = 0.8 < aspect < 1.25
+    skip_warp = False
 
     logger.info(
         f"image_bytes_to_pdf_bytes: image={w}x{h}, aspect={aspect:.2f}, skip_warp={skip_warp}"
