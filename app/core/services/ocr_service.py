@@ -16,14 +16,21 @@ from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 from paddleocr import PaddleOCR
 from pix2text import Pix2Text
 
-
-logger = logging.getLogger(__name__)
-MathDelims = Literal["dollars", "single_backslash"]
+from transformers import AutoTokenizer, AutoModelForCausalLM
+import torch
 
 
 # ============================================================
 # Engines
 # ============================================================
+
+DEVICE = "cpu" 
+model_name = "alpindale/Llama-3.2-3B"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForCausalLM.from_pretrained(model_name)
+logger = logging.getLogger(__name__)
+MathDelims = Literal["dollars", "single_backslash"]
+
 
 def build_p2t_formula(device: str = "gpu") -> Pix2Text:
     total_configs = {"text_formula": {"languages": ("ru", "en")}}
@@ -46,7 +53,7 @@ def build_paddle_ru(device: str = "gpu") -> PaddleOCR:
 
 
 # ============================================================
-# OpenCV preprocessing (ваш код, почти без изменений)
+# OpenCV preprocessing 
 # ============================================================
 
 
@@ -132,21 +139,28 @@ def _find_largest_quad(
     return None
 
 
-def _enhance_for_ocr(warped_bgr: np.ndarray, upscale: int = 3) -> Image.Image:
+def _enhance_for_ocr(warped_bgr: np.ndarray, upscale: int = 3, force_binary: bool = False) -> Image.Image:
+    """
+    Возвращает PIL-изображение, готовое для распознавания.
+    По умолчанию — CLAHE + мягкое шумоподавление + upscale (до распознавания).
+    Если force_binary=True — вернёт бинаризованную версию (использовать только для детекции/специфичных задач).
+    """
     h_before, w_before = warped_bgr.shape[:2]
     logger.info(f"_enhance_for_ocr input: {w_before}x{h_before}")
 
+    # 1) Мягкое шумоподавление (сохраняем градиенты)
     den = cv2.bilateralFilter(warped_bgr, d=9, sigmaColor=75, sigmaSpace=75)
 
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
-    den = cv2.morphologyEx(den, cv2.MORPH_CLOSE, kernel, iterations=1)
-
+    # 2) CLAHE на L-канале — усиливаем контраст локально, не ломая тонов
     lab = cv2.cvtColor(den, cv2.COLOR_BGR2LAB)
     l, a, b = cv2.split(lab)
-    clahe = cv2.createCLAHE(clipLimit=3.5, tileGridSize=(10, 10))
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
     l2 = clahe.apply(l)
-    out = cv2.cvtColor(cv2.merge([l2, a, b]), cv2.COLOR_LAB2BGR)
+    merged = cv2.cvtColor(cv2.merge([l2, a, b]), cv2.COLOR_LAB2BGR)
 
+    out = merged
+
+    # 3) upscale перед разрезанием/резкостью — лучше до интерполяции
     if upscale and upscale > 1:
         out = cv2.resize(
             out,
@@ -155,10 +169,24 @@ def _enhance_for_ocr(warped_bgr: np.ndarray, upscale: int = 3) -> Image.Image:
         )
         logger.info(f"After upscale {upscale}x: {out.shape[1]}x{out.shape[0]}")
 
+    if force_binary:
+        gray = cv2.cvtColor(out, cv2.COLOR_BGR2GRAY)
+        gray = cv2.normalize(gray, None, 0, 255, cv2.NORM_MINMAX)
+        bin_img = cv2.adaptiveThreshold(
+            gray,
+            255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY,
+            31,
+            10,
+        )
+        out = cv2.cvtColor(bin_img, cv2.COLOR_GRAY2BGR)
+
     pil = _bgr_to_pil(out)
-    pil = ImageEnhance.Contrast(pil).enhance(1.5)
-    pil = pil.filter(ImageFilter.UnsharpMask(radius=3, percent=200, threshold=2))
-    pil = ImageEnhance.Brightness(pil).enhance(1.05)
+
+    # лёгкая резкость/контраст на PIL
+    pil = ImageEnhance.Contrast(pil).enhance(1.15)
+    pil = ImageEnhance.Brightness(pil).enhance(1.02)
 
     logger.info(f"Final PIL size: {pil.size}")
     return pil
@@ -205,7 +233,7 @@ def preprocess_screen_photo(
 
 
 # ============================================================
-# Postprocessing текста (ваш код)
+# Postprocessing текста
 # ============================================================
 
 
@@ -343,7 +371,7 @@ def _pix2text_detect_and_recognize_formulas(
     # СТАЛО
     analyzer_outs = tfo.mfd(
         img0.copy(),
-        resized_shape=resized_shape,  # <-- ТОЛЬКО int
+        resized_shape=resized_shape,
     )
 
 
@@ -423,7 +451,7 @@ def _paddle_text_boxes(paddle: PaddleOCR, img_bgr: np.ndarray) -> List[OcrBox]:
                 txt = str(rec_texts[i] or "").strip()
                 if not txt:
                     continue
-                box = np.array(rec_polys[i], dtype=np.float32)  # (4,2) [page:5]
+                box = np.array(rec_polys[i], dtype=np.float32) 
                 outs.append(
                     OcrBox(
                         type="text",
@@ -465,10 +493,40 @@ def _paddle_text_boxes(paddle: PaddleOCR, img_bgr: np.ndarray) -> List[OcrBox]:
             outs.append(OcrBox(type="text", text=txt, score=score, box=box))
     return outs
 
-_MATH_BLOCK_RE = re.compile(
-    r"(\$\$.*?\$\$|\\\[.*?\\\]|\\\(.*?\\\))",
-    re.DOTALL,
-)
+_MATH_BLOCK_RE = re.compile(r"(\$\$.*?\$\$|\\\[.*?\\\]|\\\(.*?\\\))", re.DOTALL)
+
+def correct_text_with_llama(md: str, max_chunk_tokens: int = 1024) -> str:
+    """
+    Исправляет текст (русский, Markdown) через LLaMA.
+    Формулы оставляются как есть.
+    """
+    parts = _MATH_BLOCK_RE.split(md)
+    corrected_parts = []
+
+    for part in parts:
+        if not part:
+            continue
+        if _MATH_BLOCK_RE.fullmatch(part):
+            corrected_parts.append(part)
+        else:
+            tokens = tokenizer(part, return_tensors="pt").input_ids[0]
+            start_idx = 0
+            while start_idx < len(tokens):
+                end_idx = min(start_idx + max_chunk_tokens, len(tokens))
+                chunk_tokens = tokens[start_idx:end_idx].unsqueeze(0).to(model.device)
+                with torch.no_grad():
+                    output_ids = model.generate(
+                        chunk_tokens,
+                        max_new_tokens=512,
+                        do_sample=False,
+                        temperature=0.0,
+                        pad_token_id=tokenizer.eos_token_id,
+                    )
+                corrected_chunk = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+                corrected_parts.append(corrected_chunk)
+                start_idx = end_idx
+
+    return "".join(corrected_parts)
 
 _LAT2CYR = str.maketrans({
     "a": "а", "A": "А",
@@ -524,7 +582,7 @@ def replace_lat_to_cyr_outside_math(text: str) -> str:
         if not part:
             continue
         if _MATH_BLOCK_RE.fullmatch(part):
-            out.append(part)  # формулы — как есть
+            out.append(part)
         else:
             out.append(part.translate(_LAT2CYR))
 
@@ -578,7 +636,7 @@ def image_bytes_to_markdown(
 
 
 # ============================================================
-# Pandoc: Markdown -> PDF bytes (ваш код)
+# Pandoc: Markdown -> PDF bytes
 # ============================================================
 
 
@@ -686,5 +744,9 @@ def image_bytes_to_pdf_bytes(image_bytes: bytes) -> bytes:
         skip_warp=skip_warp,
         contain_formula=True,
     )
+    # 1) Восстанавливаем переносы
     md = restore_paragraphs(md)
+
+    # 2) Исправляем текст через LLaMA
+    md = correct_text_with_llama(md)
     return markdown_to_pdf_bytes(md, math_delims="dollars", debug=False)
