@@ -24,10 +24,10 @@ import torch
 # Engines
 # ============================================================
 
-DEVICE = "cpu" 
-model_name = "alpindale/Llama-3.2-3B"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForCausalLM.from_pretrained(model_name)
+#DEVICE = "cpu" 
+#model_name = "alpindale/Llama-3.2-3B"
+#tokenizer = AutoTokenizer.from_pretrained(model_name)
+#model = AutoModelForCausalLM.from_pretrained(model_name)
 logger = logging.getLogger(__name__)
 MathDelims = Literal["dollars", "single_backslash"]
 
@@ -495,38 +495,38 @@ def _paddle_text_boxes(paddle: PaddleOCR, img_bgr: np.ndarray) -> List[OcrBox]:
 
 _MATH_BLOCK_RE = re.compile(r"(\$\$.*?\$\$|\\\[.*?\\\]|\\\(.*?\\\))", re.DOTALL)
 
-def correct_text_with_llama(md: str, max_chunk_tokens: int = 1024) -> str:
-    """
-    Исправляет текст (русский, Markdown) через LLaMA.
-    Формулы оставляются как есть.
-    """
-    parts = _MATH_BLOCK_RE.split(md)
-    corrected_parts = []
-
-    for part in parts:
-        if not part:
-            continue
-        if _MATH_BLOCK_RE.fullmatch(part):
-            corrected_parts.append(part)
-        else:
-            tokens = tokenizer(part, return_tensors="pt").input_ids[0]
-            start_idx = 0
-            while start_idx < len(tokens):
-                end_idx = min(start_idx + max_chunk_tokens, len(tokens))
-                chunk_tokens = tokens[start_idx:end_idx].unsqueeze(0).to(model.device)
-                with torch.no_grad():
-                    output_ids = model.generate(
-                        chunk_tokens,
-                        max_new_tokens=512,
-                        do_sample=False,
-                        temperature=0.0,
-                        pad_token_id=tokenizer.eos_token_id,
-                    )
-                corrected_chunk = tokenizer.decode(output_ids[0], skip_special_tokens=True)
-                corrected_parts.append(corrected_chunk)
-                start_idx = end_idx
-
-    return "".join(corrected_parts)
+#def correct_text_with_llama(md: str, max_chunk_tokens: int = 1024) -> str:
+#    """
+#    Исправляет текст (русский, Markdown) через LLaMA.
+#    Формулы оставляются как есть.
+#    """
+#    parts = _MATH_BLOCK_RE.split(md)
+#    corrected_parts = []
+#
+#    for part in parts:
+#        if not part:
+#            continue
+#        if _MATH_BLOCK_RE.fullmatch(part):
+#            corrected_parts.append(part)
+#        else:
+#            tokens = tokenizer(part, return_tensors="pt").input_ids[0]
+#            start_idx = 0
+#            while start_idx < len(tokens):
+#                end_idx = min(start_idx + max_chunk_tokens, len(tokens))
+#                chunk_tokens = tokens[start_idx:end_idx].unsqueeze(0).to(model.device)
+#                with torch.no_grad():
+#                    output_ids = model.generate(
+#                        chunk_tokens,
+#                        max_new_tokens=512,
+#                        do_sample=False,
+#                        temperature=0.0,
+#                        pad_token_id=tokenizer.eos_token_id,
+#                   )
+#                corrected_chunk = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+#                corrected_parts.append(corrected_chunk)
+#                start_idx = end_idx
+#
+#    return "".join(corrected_parts)
 
 _LAT2CYR = str.maketrans({
     "a": "а", "A": "А",
@@ -748,5 +748,5 @@ def image_bytes_to_pdf_bytes(image_bytes: bytes) -> bytes:
     md = restore_paragraphs(md)
 
     # 2) Исправляем текст через LLaMA
-    md = correct_text_with_llama(md)
+    #md = correct_text_with_llama(md)
     return markdown_to_pdf_bytes(md, math_delims="dollars", debug=False)
