@@ -8,7 +8,6 @@ from typing import Any
 from uuid import uuid4
 
 from bson import ObjectId
-from email_validator import EmailNotValidError, validate_email
 from litestar.datastructures import UploadFile
 
 from app import config
@@ -108,8 +107,8 @@ class UserService:
                 raise EmailAlreadyTakenError
 
         try:
-            validate_email(email, test_environment=config.Config.DEBUG)
-        except EmailNotValidError:
+            await self._validator.validate_email(email)
+        except EmailValidationError:
             raise EmailValidationError("Введите корректный email") from None
 
         salt, _hash = self._security.hash_password(password)

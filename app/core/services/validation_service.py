@@ -7,6 +7,7 @@ import re
 from litestar.datastructures import UploadFile
 
 from app import config
+from app.core.errors.auth import EmailValidationError
 from app.core.errors.validation import (
     PasswordValidationError,
     UsernameValidationError,
@@ -61,6 +62,7 @@ class ValidationService:
 
         return True
 
+
     async def validate_username(self, username: str) -> bool:
         """Проверка имени пользователя.
 
@@ -95,6 +97,7 @@ class ValidationService:
 
         return True
 
+
     async def validate_image_extension(self, file: UploadFile) -> bool:
         """Проверка расширения файла.
 
@@ -110,3 +113,40 @@ class ValidationService:
         ext = ext.lower().lstrip(".")
 
         return ext in self.config.ALLOWED_IMAGE_EXTENSIONS
+
+
+    async def validate_email(self, email: str) -> bool:
+        """Проверка email.
+
+        Требования:
+        - Корректный формат email
+        - Без пробелов
+        - Длина не более 254 символов
+
+        Args:
+            email (str): Email для валидации
+
+        Returns:
+            bool: True, если email валиден
+
+        Raises:
+            EmailValidationError: Ошибка при валидации email
+        """
+        if not email:
+            raise EmailValidationError("Email не может быть пустым.")
+
+        if len(email) > 254:
+            raise EmailValidationError("Email не должен превышать 254 символа.")
+
+        if " " in email:
+            raise EmailValidationError("Email не должен содержать пробелы.")
+
+        email_regex = re.compile(
+            r"^(?=.{1,64}@)[A-Za-z0-9._%+-]+@"
+            r"[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
+        )
+
+        if not email_regex.match(email):
+            raise EmailValidationError("Некорректный формат email.")
+
+        return True

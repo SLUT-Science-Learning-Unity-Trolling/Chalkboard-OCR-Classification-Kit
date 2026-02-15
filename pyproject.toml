@@ -39,6 +39,7 @@ accelerate = "^1.12.0"
 bitsandbytes = "^0.49.1"
 pyllamacpp = "^2.4.3"
 compressed-tensors = "^0.13.0"
+paseto = "^2.0.0"
 
 
 [tool.poetry.group.docs.dependencies]
