@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 
-@dataclass
+@dataclass(slots=True, kw_only=True)
 class UploadImageDTO:
     """Модель данных для загрузки изображения.
 
@@ -19,7 +19,7 @@ class UploadImageDTO:
     url: str
 
 
-@dataclass
+@dataclass(slots=True, kw_only=True)
 class ImageDTO:
     """Модель данных для изображения.
 

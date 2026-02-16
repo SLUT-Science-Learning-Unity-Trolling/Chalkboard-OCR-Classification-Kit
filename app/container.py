@@ -4,9 +4,11 @@
 from punq import Container
 
 from app.adapters.gateways.mongo import MongoGateway
+from app.adapters.gateways.redis import RedisGateway
 from app.adapters.gateways.s3 import MinioGateway
 from app.adapters.repositories.image_repo import ImageRepo
 from app.adapters.repositories.mongo_repo import MongoRepo
+from app.adapters.repositories.redis_repo import RedisRepo
 from app.adapters.repositories.user_repo import UserRepo
 from app.config import Config
 from app.core.services.auth_service import AuthService
@@ -22,6 +24,15 @@ def build_container() -> Container:
     """Mongo и child репозитории"""
     # MongoGateway
     container.register(MongoGateway, factory=lambda: MongoGateway())
+    
+    #Redis
+    container.register(RedisGateway, factory=lambda: RedisGateway())
+    container.register(
+        RedisRepo,
+        factory=lambda: RedisRepo(
+            gateway=container.resolve(RedisGateway)
+        ),
+    )
 
     # UserRepo
     container.register(
@@ -73,6 +84,7 @@ def build_container() -> Container:
         factory=lambda: AuthService(
             repository=container.resolve(UserRepo),
             security=container.resolve(SecurityService),
+            redis_repo=container.resolve(RedisRepo),
         ),
     )
 

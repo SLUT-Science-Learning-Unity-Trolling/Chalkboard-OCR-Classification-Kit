@@ -1,6 +1,7 @@
 """Модуль содержит эндпоинты для работы с пользователями."""
 
 # API_User
+
 from typing import Annotated
 
 from bson import ObjectId
@@ -10,15 +11,20 @@ from litestar.di import Provide
 from litestar.dto import DataclassDTO
 from litestar.enums import RequestEncodingType
 from litestar.exceptions import HTTPException
+from litestar.openapi import ResponseSpec
+from litestar.openapi.spec import Example
 from litestar.params import Body
 from litestar.status_codes import (
     HTTP_200_OK,
     HTTP_201_CREATED,
     HTTP_400_BAD_REQUEST,
+    HTTP_401_UNAUTHORIZED,
 )
 from punq import Container
 
+from app.api.exceptions.problem_factory import ErrorCodes
 from app.api.schemas.image_dto import ImageDTO
+from app.api.exceptions.problem_details_dto import ProblemDetailsDTO
 from app.api.schemas.user_dto import UserCreateDTO, UserDTO
 from app.core.domain.models.image import UploadedImage
 from app.core.domain.models.user import User
@@ -28,7 +34,7 @@ from app.core.errors.auth import (
     PasswordDontMatchError,
     UsernameAlreadyTakenError,
 )
-from app.core.errors.user import AbsentUserError, DeleteImageError, ImageUploadError
+from app.core.errors.user import DeleteImageError, ImageUploadError
 from app.core.errors.validation import (
     ImageExtensionValidationError,
     PasswordValidationError,
@@ -40,24 +46,36 @@ from app.core.services.user_service import UserService
 
 @post(
     "/users/create",
+    summary="Создание пользователя",
+    description="Эндпоинт регистрации нового пользователя.",
+    tags=["Пользователь"],
     status_code=HTTP_201_CREATED,
     dto=DataclassDTO[UserCreateDTO],
     return_dto=DataclassDTO[UserDTO],
+    responses={
+        HTTP_201_CREATED: ResponseSpec(
+            description="Пользователь успешно создан",
+            data_container=UserDTO,
+        ),
+        HTTP_400_BAD_REQUEST: ResponseSpec(
+            description="Ошибка валидации данных",
+            data_container=ProblemDetailsDTO,
+            examples=[
+                Example(
+                    value=ErrorCodes.VALIDATION_ERROR.example(
+                        "Email уже используется или данные невалидны"
+                    ),
+                )
+            ],
+        ),
+    },
 )
 async def create_user(
     data: UserCreateDTO,
     container: Container,
 ) -> UserDTO:
-    """Эндпоинт создания пользователя.
-
-    Args:
-        data (UserCreateDTO): Данные для создания пользователя
-        container (Container): Контейнер
-
-    Returns:
-        UserDTO: Данные пользователя
-    """
     user_service = container.resolve(UserService)
+
     try:
         user: User = await user_service.create_user(
             username=data.username,
@@ -75,39 +93,66 @@ async def create_user(
         EmailAlreadyTakenError,
         UsernameAlreadyTakenError,
     ) as e:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e)) from e
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+
 
 
 @post(
     "/users/upload_image",
+    summary="Загрузка изображения",
+    description="Загрузка изображения текущего пользователя.",
+    tags=["Пользователь"],
     status_code=HTTP_201_CREATED,
     return_dto=DataclassDTO[ImageDTO],
     dependencies={"current_user": Provide(AuthService.get_current_user)},
+    responses={
+        HTTP_201_CREATED: ResponseSpec(
+            description="Изображение успешно загружено",
+            data_container=ImageDTO,
+        ),
+        HTTP_400_BAD_REQUEST: ResponseSpec(
+            description="Ошибка загрузки изображения",
+            data_container=ProblemDetailsDTO,
+            examples=[
+                Example(
+                    value=ErrorCodes.IMAGE_UPLOAD_ERROR.example(
+                        "Недопустимое расширение файла или ошибка загрузки"
+                    ),
+                )
+            ],
+        ),
+        HTTP_401_UNAUTHORIZED: ResponseSpec(
+            description="Пользователь не авторизован",
+            data_container=ProblemDetailsDTO,
+            examples=[
+                Example(
+                    value=ErrorCodes.AUTHENTICATION_ERROR.example(
+                        "Пользователь не авторизован или сессия истекла"
+                    ),
+                )
+            ],
+        ),
+    },
 )
 async def upload_image(
     container: Container,
     current_user: UserDTO,
     data: Annotated[UploadFile, Body(media_type=RequestEncodingType.MULTI_PART)],
 ) -> ImageDTO:
-    """Эндпоинт загрузки локального изображения пользователя через UploadFile.
-
-    Args:
-        container (Container): Контейнер
-        current_user (UserDTO): Пользователь
-        data (UploadFile): Файл изображения
-
-    Returns:
-        ImageDTO: Данные изображения
-    """
     user_service = container.resolve(UserService)
-    try:
-        user_id = current_user.id
-    except AbsentUserError:
-        raise AbsentUserError("Не выполнен вход в аккаунт") from None
+
+    if not current_user:
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED,
+            detail="Пользователь не авторизован или сессия истекла",
+        )
 
     try:
         image: UploadedImage = await user_service.upload_image(
-            user_id=user_id, file=data
+            user_id=current_user.id, file=data
         )
 
         image_dict = image.__dict__.copy()
@@ -120,77 +165,110 @@ async def upload_image(
         ImageExtensionValidationError,
         ImageUploadError,
     ) as e:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e)) from e
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
 
 
 @get(
-    "users/get_all_user_images",
-    status_code=HTTP_201_CREATED,
+    "/users/get_all_user_images",
+    summary="Получение всех изображений пользователя",
+    description="Возвращает список изображений текущего пользователя.",
+    tags=["Пользователь"],
+    status_code=HTTP_200_OK,
     return_dto=DataclassDTO[ImageDTO],
     dependencies={"current_user": Provide(AuthService.get_current_user)},
+    responses={
+        HTTP_200_OK: ResponseSpec(
+            description="Список изображений пользователя",
+            data_container=ImageDTO,
+        ),
+        HTTP_401_UNAUTHORIZED: ResponseSpec(
+            description="Пользователь не авторизован",
+            data_container=ProblemDetailsDTO,
+            examples=[
+                Example(
+                    value=ErrorCodes.AUTHENTICATION_ERROR.example(
+                        "Пользователь не авторизован или сессия истекла"
+                    ),
+                )
+            ],
+        ),
+    },
 )
 async def get_all_user_images(
     container: Container,
     current_user: UserDTO,
 ) -> list[ImageDTO]:
-    """Эндпоинт получения всех изображений пользователя.
-
-    Args:
-        container (Container): Контейнер
-        current_user (UserDTO): Пользователь
-
-    Returns:
-        list[ImageDTO]: Список изображений пользователя
-    """
     user_service = container.resolve(UserService)
-    try:
-        user_id = current_user.id
-    except AbsentUserError:
-        raise AbsentUserError("Не выполнен вход в аккаунт") from None
 
-    try:
-        images: list[UploadedImage] = await user_service.get_all_user_images(
-            user_id=user_id
+    if not current_user:
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED,
+            detail="Пользователь не авторизован или сессия истекла",
         )
-        return [ImageDTO.fromrow(image.__dict__) for image in images]
 
-    except ImageUploadError as e:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    images: list[UploadedImage] = await user_service.get_all_user_images(
+        user_id=current_user.id
+    )
 
+    return [ImageDTO.fromrow(image.__dict__) for image in images]
 
 @delete(
-    "users/delete_image",
+    "/users/delete_image",
+    summary="Удаление изображения",
+    description="Удаляет изображение текущего пользователя по URL.",
+    tags=["Пользователь"],
     status_code=HTTP_200_OK,
     dependencies={"current_user": Provide(AuthService.get_current_user)},
+    responses={
+        HTTP_200_OK: ResponseSpec(
+            description="Изображение успешно удалено",
+            data_container=None,
+        ),
+        HTTP_400_BAD_REQUEST: ResponseSpec(
+            description="Ошибка удаления изображения",
+            data_container=ProblemDetailsDTO,
+            examples=[
+                Example(
+                    value=ErrorCodes.IMAGE_DELETION_ERROR.example(
+                        "Не удалось удалить изображение"
+                    ),
+                )
+            ],
+        ),
+        HTTP_401_UNAUTHORIZED: ResponseSpec(
+            description="Пользователь не авторизован",
+            data_container=ProblemDetailsDTO,
+            examples=[
+                Example(
+                    value=ErrorCodes.AUTHENTICATION_ERROR.example(
+                        "Пользователь не авторизован или сессия истекла"
+                    ),
+                )
+            ],
+        ),
+    },
 )
 async def delete_image(
     container: Container,
     current_user: UserDTO,
     url: str,
 ) -> dict[str, str]:
-    """Эндпоинт удаления изображения пользователя.
-
-    Args:
-        container (Container): Контейнер
-        current_user (UserDTO): Пользователь
-        url (str): Путь к изображению
-
-    Returns:
-        dict[str, str]: Сообщение об успешном удалении изображения
-    """
     user_service = container.resolve(UserService)
 
-    try:
-        user_id = current_user.id
-    except AbsentUserError as e:
+    if not current_user:
         raise HTTPException(
-            status_code=HTTP_400_BAD_REQUEST, detail=f"Не выполнен вход в аккаунт: {e}"
-        ) from e
+            status_code=HTTP_401_UNAUTHORIZED,
+            detail="Пользователь не авторизован или сессия истекла",
+        )
 
     try:
-        await user_service.delete_image(user_id=user_id, url=url)
-        return {"success": "true", "message": "Изображение успешно удалено"}
+        await user_service.delete_image(user_id=current_user.id, url=url)
+        return {"detail": "Изображение успешно удалено"}
     except DeleteImageError as e:
-        return {"success": "false", "message": f"Ошибка при удалении изображения: {e}"}
-    except Exception as e:
-        return {"success": "false", "message": f"Произошла непредвиденная ошибка: {e}"}
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e

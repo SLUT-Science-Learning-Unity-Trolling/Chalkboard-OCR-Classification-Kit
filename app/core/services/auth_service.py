@@ -2,18 +2,22 @@
 # AuthService
 
 import re
+import secrets
 
 from litestar import Request
 from punq import Container
 
 from app.adapters.repositories.abc_repo import RepositoryInterface
+from app.adapters.repositories.redis_repo import RedisRepo
 from app.api.schemas.user_dto import UserDTO
-from app.config import config, jam
+from app.config import config, token_key
 from app.core.errors.auth import (
     InvalidEmailOrPasswordError,
+    UnauthorizedError,
 )
 from app.core.services.security_service import SecurityService
 from app.core.services.user_service import UserService
+import paseto
 
 
 class AuthService:
@@ -26,6 +30,7 @@ class AuthService:
         self,
         repository: RepositoryInterface,
         security: SecurityService,
+        redis_repo: RedisRepo,
     ) -> None:
         """Инициализация сервиса аутентификации.
 
@@ -35,6 +40,7 @@ class AuthService:
         """
         self._repo = repository
         self._security = security
+        self._redis = redis_repo
         pass
 
     async def auth_existing_user(
@@ -68,16 +74,31 @@ class AuthService:
         if not self._security.verify_hash(password=password, salt=salt, hash_=hash):
             raise InvalidEmailOrPasswordError
 
-        payload = jam.make_payload(
-            exp=config.JWT_EXPIRE_TIME,
-            data={
-                "user_id": str(user["_id"]),
-                "email": user["email"],
+
+        access_token = paseto.create(
+            key=token_key,
+            purpose="local",
+            claims={
+                "sub": str(user["_id"]),
                 "username": user["username"],
+                "email": user["email"],
+                "type": "access",
+                "jti": secrets.token_hex(8),
             },
+            exp_seconds=config.ACCESS_TOKEN_EXPIRE_TIME,
         )
 
-        token = jam.gen_jwt_token(payload)
+
+        refresh_token = paseto.create(
+            key=token_key,
+            purpose="local",
+            claims={
+                "sub": str(user["_id"]),
+                "type": "refresh",
+                "jti": secrets.token_hex(16),
+            },
+            exp_seconds=config.REFRESH_TOKEN_EXPIRE_TIME,
+        )
 
         user_dto = UserDTO(
             id=str(user["_id"]),
@@ -85,7 +106,7 @@ class AuthService:
             email=user["email"],
         )
 
-        return user_dto, token
+        return user_dto, access_token, refresh_token
 
     @staticmethod
     async def get_current_user(
@@ -103,21 +124,100 @@ class AuthService:
         Returns:
             Optional[UserDTO]: DTO текущего пользователя или None, если пользователь не авторизован.
         """
-        token = request.cookies.get("token")
+        token = request.cookies.get("access_token")
         if not token:
             return None
 
         try:
-            payload = jam.verify_jwt_token(
-                token=token, check_exp=True, check_list=False
+            parsed = paseto.parse(
+                key=token_key,
+                purpose="local",
+                token=token,
             )
-            user_id = payload["data"]["user_id"]
+
+            claims = parsed["message"]
+
+            if claims.get("type") != "access":
+                return None
+
+            user_id = claims["sub"]
+
         except Exception:
             return None
 
         user_service = container.resolve(UserService)
         user = await user_service.get_user_by_id(user_id)
+
         if not user:
             return None
 
         return UserDTO.fromrow(user)
+    
+
+    async def refresh_tokens(self, refresh_token: str, access_token: str | None) -> tuple[str, str]:
+        """Перевыпуск access и refresh токена по валидному refresh_token."""
+
+        if not refresh_token:
+            raise UnauthorizedError("Refresh token is required")
+
+        def _parse_paseto(token: str, expected_type: str) -> dict:
+            """Парсинг PASETO и проверка типа токена."""
+            try:
+                parsed = paseto.parse(key=token_key, purpose="local", token=token)
+                claims = parsed["message"]
+            except Exception:
+                raise UnauthorizedError(f"Invalid {expected_type} token")
+
+            if claims.get("type") != expected_type:
+                raise UnauthorizedError(f"Token is not of type {expected_type}")
+
+            jti = claims.get("jti")
+            if not jti:
+                raise UnauthorizedError(f"{expected_type.capitalize()} token missing jti")
+
+            return claims
+
+        claims_refresh = _parse_paseto(refresh_token, "refresh")
+        refresh_jti = claims_refresh["jti"]
+
+        if self._redis and await self._redis.is_blacklisted(refresh_jti):
+            raise UnauthorizedError("Refresh token is blacklisted")
+
+        user_id = claims_refresh["sub"]
+
+        claims_access = None
+        access_jti = None
+        if access_token:
+            claims_access = _parse_paseto(access_token, "access")
+            access_jti = claims_access["jti"]
+            if self._redis and await self._redis.is_blacklisted(access_jti):
+                raise UnauthorizedError("Access token is blacklisted")
+
+        new_access = paseto.create(
+            key=token_key,
+            purpose="local",
+            claims={
+                "sub": user_id,
+                "type": "access",
+                "jti": secrets.token_hex(8),
+            },
+            exp_seconds=config.ACCESS_TOKEN_EXPIRE_TIME,
+        )
+
+        new_refresh = paseto.create(
+            key=token_key,
+            purpose="local",
+            claims={
+                "sub": user_id,
+                "type": "refresh",
+                "jti": secrets.token_hex(16),
+            },
+            exp_seconds=config.REFRESH_TOKEN_EXPIRE_TIME,
+        )
+
+        if self._redis:
+            await self._redis.add_to_blacklist(refresh_jti, expires_in=config.REFRESH_TOKEN_EXPIRE_TIME)
+            if access_jti:
+                await self._redis.add_to_blacklist(access_jti, expires_in=config.ACCESS_TOKEN_EXPIRE_TIME)
+
+        return new_access, new_refresh

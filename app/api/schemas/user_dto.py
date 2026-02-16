@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 
-@dataclass
+@dataclass(slots=True, kw_only=True)
 class UserCreateDTO:
     """Данные для создания пользователя.
 
@@ -23,7 +23,7 @@ class UserCreateDTO:
     password: str
     repeat_password: str
 
-@dataclass
+@dataclass(slots=True, kw_only=True)
 class UserDTO:
     """Данные о пользователе, возвращаемые пользователю.
 
@@ -53,7 +53,7 @@ class UserDTO:
             email=row["email"],
         )
 
-@dataclass
+@dataclass(slots=True, kw_only=True)
 class UserLoginDTO:
     """Данные для авторизации пользователя.
 

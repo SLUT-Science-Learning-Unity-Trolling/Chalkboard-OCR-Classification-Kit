@@ -1,9 +1,7 @@
 """Модуль содержит эндпоинты авторизации и выхода из профиля."""
 # API_Auth
 
-from typing import Any
-
-from litestar import Response, get, post
+from litestar import Request, Response, get, post
 from litestar.di import Provide
 from litestar.dto import DataclassDTO
 from litestar.exceptions import HTTPException
@@ -12,21 +10,27 @@ from litestar.status_codes import (
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
     HTTP_500_INTERNAL_SERVER_ERROR,
-    HTTP_204_NO_CONTENT,
 )
 from litestar.openapi import ResponseSpec
 from litestar.openapi.spec import Example
+import paseto
 from punq import Container
 
-from app.api.schemas.problem_details_dto import ProblemDetailsDTO
+from app.adapters.repositories.redis_repo import RedisRepo
+from app.api.exceptions.problem_details_dto import ProblemDetailsDTO
+from app.api.exceptions.problem_factory import ErrorCodes
 from app.api.schemas.user_dto import UserDTO, UserLoginDTO
-from app.config import config
+from app.config import config, token_key
 from app.core.errors.auth import InvalidEmailOrPasswordError
 from app.core.services.auth_service import AuthService
 
 
 @post(
     "/auth/login",
+    summary="Авторизация пользователя",
+    description="Эндпоинт для авторизации пользователя с установкой Paseto в cookie." \
+    "Принимает email или username и пароль, возвращает данные пользователя и устанавливает access и refresh токены в cookie.",
+    tags=["Авторизация"],
     status_code=HTTP_200_OK,
     dto=DataclassDTO[UserLoginDTO],
     return_dto=DataclassDTO[UserDTO],
@@ -49,12 +53,9 @@ from app.core.services.auth_service import AuthService
             data_container=ProblemDetailsDTO,
             examples=[
                 Example(
-                    value={
-                        "type": "Поменять на нормальный URL",
-                        "title": "Неверные данные",
-                        "status": 401,
-                        "detail": "Неверная почта/логин или пароль",
-                    },
+                    value=ErrorCodes.AUTHENTICATION_ERROR.example(
+                        "Неверная почта/логин или пароль"
+                    ),
                 )
             ],
         ),
@@ -63,12 +64,9 @@ from app.core.services.auth_service import AuthService
             data_container=ProblemDetailsDTO,
              examples=[
                 Example(
-                    value={
-                        "type": "Поменять на нормальный URL",
-                        "title": "Невалидные данные",
-                        "status": 400,
-                        "detail": "Ошибка валидации данных",
-                    },
+                    value=ErrorCodes.VALIDATION_ERROR.example(
+                        "Ошибка валидации данных"
+                    ),
                 )
             ],
         ),
@@ -77,12 +75,9 @@ from app.core.services.auth_service import AuthService
             data_container=ProblemDetailsDTO,
              examples=[
                 Example(
-                    value={
-                        "type": "Поменять на нормальный URL",
-                        "title": "Внутренняя ошибка сервера",
-                        "status": 500,
-                        "detail": "Произошла внутренняя ошибка сервера",
-                    },
+                    value=ErrorCodes.SERVICE_CONNECTION_ERROR.example(
+                        "Внутренняя ошибка сервера"
+                    ),
                 )
             ],
         ),
@@ -92,19 +87,19 @@ async def auth_user(
     data: UserLoginDTO,
     container: Container,
 ) -> Response:
-    """Эндпоинт для авторизации пользователя с установкой JWT в cookie.
+    """Эндпоинт для авторизации пользователя с установкой PASETO в cookie.
 
     Args:
         data (UserLoginDTO): Данные для авторизации пользователя
         container (Container): Контейнер
 
     Returns:
-        Response: Ответ с JWT в cookie
+        Response: Ответ с PASETO в cookie
     """
     auth_service = container.resolve(AuthService)
 
     try:
-        user, token = await auth_service.auth_existing_user(
+        user, access_token, refresh_token = await auth_service.auth_existing_user(
             identifier=data.identifier,
             password=data.password,
         )
@@ -112,12 +107,23 @@ async def auth_user(
         user_dto = UserDTO.fromrow(user.__dict__)
 
         response = Response(user_dto)
+
         response.set_cookie(
-            key="token",
-            value=token,
+            key="access_token",
+            value=access_token,
             httponly=True,
             secure=True,
-            expires=config.JWT_EXPIRE_TIME,
+            max_age=config.ACCESS_TOKEN_EXPIRE_TIME,
+            samesite="strict",
+            path="/",
+        )
+
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=True,
+            secure=True,
+            max_age=config.REFRESH_TOKEN_EXPIRE_TIME,
             samesite="strict",
             path="/",
         )
@@ -130,7 +136,10 @@ async def auth_user(
 
 
 @post(
-    "/auth/logout", 
+    "/auth/logout",
+    summary="Выход из профиля",
+    description="Эндпоинт выхода из профиля. Удаляет Paseto из cookie",
+    tags=["Авторизация"],
     status_code=HTTP_200_OK,
     responses = {
         HTTP_200_OK: ResponseSpec(
@@ -139,25 +148,58 @@ async def auth_user(
         ),
     },
 )
-async def logout_user() -> Response:
+async def logout_user(request: Request, container: Container) -> Response:
     """Эндпоинт выхода из профиля.
 
-    Удаляет JWT из cookie, разлогинивая пользователя.
+    Удаляет PASETO из cookie и заносит refresh (и access) токены в blacklist.
     """
+    redis_repo: RedisRepo = container.resolve(RedisRepo)
+
+    async def _blacklist_token(token: str, expected_type: str, expires_in: int):
+        """Парсит токен и добавляет его jti в blacklist, если валиден."""
+        try:
+            parsed = paseto.parse(key=token_key, purpose="local", token=token)
+            claims = parsed["message"]
+
+            if claims.get("type") == expected_type:
+                jti = claims.get("jti")
+                if jti and redis_repo:
+                    await redis_repo.add_to_blacklist(jti, expires_in=expires_in)
+        except Exception:
+            pass
+
+    refresh_token = request.cookies.get("refresh_token")
+    access_token = request.cookies.get("access_token")
+
+    if refresh_token:
+        await _blacklist_token(
+            token=refresh_token,
+            expected_type="refresh",
+            expires_in=config.REFRESH_TOKEN_EXPIRE_TIME,
+        )
+
+    if access_token:
+        await _blacklist_token(
+            token=access_token,
+            expected_type="access",
+            expires_in=config.ACCESS_TOKEN_EXPIRE_TIME,
+        )
+
     response = Response(
         content={"detail": "Пользователь успешно вышел из аккаунта"},
         status_code=HTTP_200_OK,
     )
-    response.delete_cookie(
-        key="token",
-        path="/",
-    )
+    response.delete_cookie("access_token", path="/")
+    response.delete_cookie("refresh_token", path="/")
 
     return response
 
 
 @get(
     "/me",
+    summary="Данные текущего пользователя",
+    description="Эндпоинт возвращает данные текущего авторизованного пользователя",
+    tags=["Дебаг"],
     dependencies={"current_user": Provide(AuthService.get_current_user)},
     status_code=HTTP_200_OK,
     responses = {
@@ -179,12 +221,9 @@ async def logout_user() -> Response:
             data_container=ProblemDetailsDTO,
             examples=[
                 Example(
-                    value={
-                        "type": "Поменять на нормальный URL",
-                        "title": "Пользователь не авторизован",
-                        "status": 401,
-                        "detail": "Пользователь не авторизован",
-                    },
+                    value=ErrorCodes.AUTHORIZATION_ERROR.example(
+                        "Пользователь не авторизован или сессия истекла"
+                    ),
                 )
             ],
         ),
@@ -195,7 +234,77 @@ async def get_me(current_user: UserDTO | None) -> UserDTO:
     if not current_user:
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
-            detail="Пользователь не авторизован",
+            detail="Пользователь не авторизован или сессия истекла",
         )
 
     return current_user
+
+
+@post(
+        "/auth/refresh", 
+        summary="Обновление access токена",
+        description="Эндпоинт обновляет access токен по refresh токену",
+        status_code=HTTP_200_OK,
+        tags=["Авторизация"],
+        responses = {
+            HTTP_200_OK: ResponseSpec(
+                description="Токены успешно обновлены",
+                data_container=None,
+            ),
+            HTTP_401_UNAUTHORIZED: ResponseSpec(
+                description="Невалидный refresh токен",
+                data_container=ProblemDetailsDTO,
+                examples=[
+                    Example(
+                        value=ErrorCodes.AUTHENTICATION_ERROR.example(
+                            "Невалидный или просроченный refresh токен"
+                        ),
+                    )
+                ],
+            ),
+        },
+)
+async def refresh_user(request: Request, container: Container) -> Response:
+
+    auth_service = container.resolve(AuthService)
+
+    refresh_token = request.cookies.get("refresh_token")
+    access_token = request.cookies.get("access_token")
+    if not refresh_token:
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED,
+            detail="Нет refresh токена"
+        )
+
+    try:
+        new_access, new_refresh = await auth_service.refresh_tokens(refresh_token, access_token)
+
+        response = Response({"detail": "Token refreshed"})
+
+        response.set_cookie(
+            key="access_token",
+            value=new_access,
+            httponly=True,
+            secure=True,
+            max_age=config.ACCESS_TOKEN_EXPIRE_TIME,
+            samesite="strict",
+            path="/",
+        )
+
+        response.set_cookie(
+            key="refresh_token",
+            value=new_refresh,
+            httponly=True,
+            secure=True,
+            max_age=config.REFRESH_TOKEN_EXPIRE_TIME,
+            samesite="strict",
+            path="/",
+        )
+
+        return response
+
+    except Exception:
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED,
+            detail="Невалидный или просроченный refresh токен"
+        )   

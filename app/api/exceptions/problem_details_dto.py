@@ -8,3 +8,4 @@ class ProblemDetailsDTO:
   title: str
   status: int
   details: str	
+

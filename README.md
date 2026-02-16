@@ -95,3 +95,31 @@ poetry run python app/utils/generate_docs.py
 ```bash
 poetry run python app/utils/generate_docs.py --push
 ```
+ 
+ ## ENV.EXAMPLE
+
+ ```bash
+ # MongoDB
+DATABASE_HOST=localhost
+DATABASE_COMPOSE_HOST=mongo
+DATABASE_PORT=27017
+DATABASE_USER=admin
+DATABASE_PASSWORD=secret
+DATABASE_NAME=admin
+
+# JWT
+TOKEN_SECRET_KEY=POPA
+
+# MinIO
+MINIO_COMPOSE_ENDPOINT=http://minio:9000
+MINIO_ENDPOINT=http://localhost:9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_BUCKET=bucket
+
+# Redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_DB=0
+REDIS_PASSWORD=secret
+```

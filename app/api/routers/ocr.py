@@ -18,6 +18,7 @@ from app.core.services.ocr_service import image_bytes_to_pdf_bytes
 
 @post(
     "/users/ocr/pdf",
+    tags=["OCR"],
     status_code=HTTP_201_CREATED,
     dependencies={"current_user": Provide(AuthService.get_current_user)},
 )

@@ -62,3 +62,14 @@ class InvalidEmailOrPasswordError(Exception):
             message (str | Exception, optional): Сообщение об ошибке".
         """
         self.message: str | Exception = message
+
+class UnauthorizedError(Exception):
+    """Исключение, возникающее при неавторизованном доступе."""
+
+    def __init__(self, message: str | Exception = "Пользователь не авторизован.") -> None:
+        """Конструктор.
+
+        Args:
+            message (str | Exception, optional): Сообщение об ошибке".
+        """
+        self.message: str | Exception = message

@@ -4,8 +4,8 @@
 import os
 
 from dotenv import load_dotenv
-from jam import Jam
-
+from paseto.keys.symmetric_key import SymmetricKey
+from paseto.protocols.v4 import ProtocolVersion4
 
 load_dotenv()
 
@@ -24,9 +24,10 @@ class Config:
         f"mongodb://{DATABASE_USER}:{DATABASE_PASSWORD}@{DATABASE_HOST}:{DATABASE_PORT}",
     )
 
-    """Конфигурация JWT."""
-    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-    JWT_EXPIRE_TIME = 1209600
+    """Конфигурация токенов."""
+    TOKEN_SECRET_KEY = os.getenv("TOKEN_SECRET_KEY")
+    ACCESS_TOKEN_EXPIRE_TIME = 300
+    REFRESH_TOKEN_EXPIRE_TIME = 1209600
 
     """Конфигурация валидации данных."""
     USERNAME_MIN_LENGTH = 3
@@ -63,16 +64,15 @@ class Config:
     """Прочая конфигурация."""
     DEBUG: bool = os.getenv("DEBUG", "True") == "True"
 
+    REDIS_HOST = os.getenv("REDIS_HOST",)
+    REDIS_PORT = os.getenv("REDIS_PORT",)
+    REDIS_DB = os.getenv("REDIS_DB",)
+    REDIS_PASSWORD = os.getenv("REDIS_PASSWORD",)
+    
 
 config: Config = Config()
 
-
-"""Конфиг Jam для аутентификации."""
-jam_config = {
-    "auth_type": "jwt",
-    "secret_key": config.JWT_SECRET_KEY,
-    "alg": "HS256",
-    "expire": config.JWT_EXPIRE_TIME,
-}
-
-jam = Jam(config=jam_config)
+token_key = SymmetricKey(
+    config.TOKEN_SECRET_KEY.encode(),
+    ProtocolVersion4
+)
