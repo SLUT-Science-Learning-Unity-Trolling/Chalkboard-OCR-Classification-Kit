@@ -73,3 +73,4 @@ class UnauthorizedError(Exception):
             message (str | Exception, optional): Сообщение об ошибке".
         """
         self.message: str | Exception = message
+

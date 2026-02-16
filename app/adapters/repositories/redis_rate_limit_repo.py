@@ -1,0 +1,57 @@
+
+"""Модуль содержит репозиторий для работы с Redis (rate limiting)."""
+# RateLimitRepo
+
+from app.adapters.gateways.redis import RedisGateway
+
+
+class RedisRateLimitRepo:
+    """Репозиторий для работы с rate limit в Redis."""
+
+    def __init__(self, gateway: RedisGateway) -> None:
+        """Инициализация репозитория.
+
+        Args:
+            gateway (RedisGateway): Гейтвей для подключения к Redis.
+        """
+        self._gateway = gateway
+
+    def _key(self, key: str, action: str) -> str:
+        """Генерация ключа для rate limit с указанием действия."""
+        return f"rl:{key}:{action}"
+
+    async def increment(self, key: str, action: str, window: int) -> int:
+        """Увеличивает счетчик запросов и устанавливает TTL при первом обращении.
+
+        Args:
+            key (str): Ключ (ip или user_id).
+            action (str): Тип действия (login, refresh и т.д.).
+            window (int): Время окна в секундах.
+
+        Returns:
+            int: Текущее количество запросов.
+        """
+        client = await self._gateway.get_connection()
+        redis_key = self._key(key, action)
+
+        current = await client.incr(redis_key)
+
+        if current == 1:
+            await client.expire(redis_key, window)
+
+        return current
+
+    async def is_allowed(self, key: str, action: str, limit: int, window: int) -> bool:
+        """Проверяет, разрешен ли запрос в рамках лимита.
+
+        Args:
+            key (str): Ключ (ip или user_id).
+            action (str): Тип действия (login, refresh и т.д.).
+            limit (int): Максимальное количество запросов.
+            window (int): Время окна в секундах.
+
+        Returns:
+            bool: True, если запрос разрешен, иначе False.
+        """
+        current = await self.increment(key, action, window)
+        return current <= limit

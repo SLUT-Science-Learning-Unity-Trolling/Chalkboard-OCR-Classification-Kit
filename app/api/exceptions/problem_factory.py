@@ -39,6 +39,12 @@ class ErrorCodes(Enum):
         400,
     )
 
+    TOO_MANY_REQUESTS_ERROR = (
+        "too-many-requests-error",
+        "Слишком много запросов",
+        429,
+    )
+
     def __init__(self, code: str, title: str, status: int):
         self.code = code
         self.title = title

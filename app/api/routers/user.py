@@ -19,6 +19,7 @@ from litestar.status_codes import (
     HTTP_201_CREATED,
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
+    HTTP_429_TOO_MANY_REQUESTS,
 )
 from punq import Container
 
@@ -64,6 +65,17 @@ from app.core.services.user_service import UserService
                 Example(
                     value=ErrorCodes.VALIDATION_ERROR.example(
                         "Email уже используется или данные невалидны"
+                    ),
+                )
+            ],
+        ),
+        HTTP_429_TOO_MANY_REQUESTS: ResponseSpec(
+            description="Слишком много запросов",
+            data_container=ProblemDetailsDTO,
+             examples=[
+                Example(
+                    value=ErrorCodes.TOO_MANY_REQUESTS_ERROR.example(
+                        "Слишком много попыток авторизации. Попробуйте позже."
                     ),
                 )
             ],
@@ -135,6 +147,17 @@ async def create_user(
                 )
             ],
         ),
+        HTTP_429_TOO_MANY_REQUESTS: ResponseSpec(
+            description="Слишком много запросов",
+            data_container=ProblemDetailsDTO,
+             examples=[
+                Example(
+                    value=ErrorCodes.TOO_MANY_REQUESTS_ERROR.example(
+                        "Слишком много попыток авторизации. Попробуйте позже."
+                    ),
+                )
+            ],
+        ),
     },
 )
 async def upload_image(
@@ -195,6 +218,17 @@ async def upload_image(
                 )
             ],
         ),
+        HTTP_429_TOO_MANY_REQUESTS: ResponseSpec(
+            description="Слишком много запросов",
+            data_container=ProblemDetailsDTO,
+             examples=[
+                Example(
+                    value=ErrorCodes.TOO_MANY_REQUESTS_ERROR.example(
+                        "Слишком много попыток авторизации. Попробуйте позже."
+                    ),
+                )
+            ],
+        ),
     },
 )
 async def get_all_user_images(
@@ -245,6 +279,17 @@ async def get_all_user_images(
                 Example(
                     value=ErrorCodes.AUTHENTICATION_ERROR.example(
                         "Пользователь не авторизован или сессия истекла"
+                    ),
+                )
+            ],
+        ),
+        HTTP_429_TOO_MANY_REQUESTS: ResponseSpec(
+            description="Слишком много запросов",
+            data_container=ProblemDetailsDTO,
+             examples=[
+                Example(
+                    value=ErrorCodes.TOO_MANY_REQUESTS_ERROR.example(
+                        "Слишком много попыток авторизации. Попробуйте позже."
                     ),
                 )
             ],

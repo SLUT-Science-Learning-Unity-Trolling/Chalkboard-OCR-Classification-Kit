@@ -23,7 +23,7 @@ class UserCreateDTO:
     password: str
     repeat_password: str
 
-@dataclass(slots=True, kw_only=True)
+@dataclass()
 class UserDTO:
     """Данные о пользователе, возвращаемые пользователю.
 

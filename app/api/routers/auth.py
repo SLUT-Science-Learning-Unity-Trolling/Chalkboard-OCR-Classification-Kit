@@ -10,18 +10,20 @@ from litestar.status_codes import (
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
     HTTP_500_INTERNAL_SERVER_ERROR,
+    HTTP_429_TOO_MANY_REQUESTS,
 )
 from litestar.openapi import ResponseSpec
 from litestar.openapi.spec import Example
 import paseto
 from punq import Container
 
-from app.adapters.repositories.redis_repo import RedisRepo
+from app.adapters.repositories.redis_blacklist_repo import RedisBlacklistRepo
 from app.api.exceptions.problem_details_dto import ProblemDetailsDTO
 from app.api.exceptions.problem_factory import ErrorCodes
 from app.api.schemas.user_dto import UserDTO, UserLoginDTO
 from app.config import config, token_key
 from app.core.errors.auth import InvalidEmailOrPasswordError
+from app.core.errors.security import TooManyRequestsError
 from app.core.services.auth_service import AuthService
 
 
@@ -81,11 +83,23 @@ from app.core.services.auth_service import AuthService
                 )
             ],
         ),
+        HTTP_429_TOO_MANY_REQUESTS: ResponseSpec(
+            description="Слишком много запросов",
+            data_container=ProblemDetailsDTO,
+             examples=[
+                Example(
+                    value=ErrorCodes.TOO_MANY_REQUESTS_ERROR.example(
+                        "Слишком много попыток авторизации. Попробуйте позже."
+                    ),
+                )
+            ],
+        ),
     },
 )
 async def auth_user(
     data: UserLoginDTO,
     container: Container,
+    request: Request,
 ) -> Response:
     """Эндпоинт для авторизации пользователя с установкой PASETO в cookie.
 
@@ -98,10 +112,13 @@ async def auth_user(
     """
     auth_service = container.resolve(AuthService)
 
+    client_ip = request.client.host
+
     try:
         user, access_token, refresh_token = await auth_service.auth_existing_user(
             identifier=data.identifier,
             password=data.password,
+            client_ip=client_ip,
         )
 
         user_dto = UserDTO.fromrow(user.__dict__)
@@ -133,6 +150,11 @@ async def auth_user(
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED, detail="Неверная почта/логин или пароль"
         ) from None
+    
+    except TooManyRequestsError:
+        raise HTTPException(
+            status_code=HTTP_429_TOO_MANY_REQUESTS, detail="Слишком много попыток авторизации. Попробуйте позже."
+        ) from None
 
 
 @post(
@@ -153,7 +175,7 @@ async def logout_user(request: Request, container: Container) -> Response:
 
     Удаляет PASETO из cookie и заносит refresh (и access) токены в blacklist.
     """
-    redis_repo: RedisRepo = container.resolve(RedisRepo)
+    redis_repo: RedisBlacklistRepo = container.resolve(RedisBlacklistRepo)
 
     async def _blacklist_token(token: str, expected_type: str, expires_in: int):
         """Парсит токен и добавляет его jti в blacklist, если валиден."""
@@ -227,6 +249,17 @@ async def logout_user(request: Request, container: Container) -> Response:
                 )
             ],
         ),
+        HTTP_429_TOO_MANY_REQUESTS: ResponseSpec(
+            description="Слишком много запросов",
+            data_container=ProblemDetailsDTO,
+             examples=[
+                Example(
+                    value=ErrorCodes.TOO_MANY_REQUESTS_ERROR.example(
+                        "Слишком много попыток авторизации. Попробуйте позже."
+                    ),
+                )
+            ],
+        ),
     },
 )
 async def get_me(current_user: UserDTO | None) -> UserDTO:
@@ -262,11 +295,25 @@ async def get_me(current_user: UserDTO | None) -> UserDTO:
                     )
                 ],
             ),
+            HTTP_429_TOO_MANY_REQUESTS: ResponseSpec(
+                description="Слишком много попыток авторизации",
+                data_container=ProblemDetailsDTO,
+                examples=[
+                    Example(
+                        value=ErrorCodes.TOO_MANY_REQUESTS_ERROR.example(
+                            "Слишком много попыток обновления токенов. Попробуйте позже."
+                        ),
+                    )
+                ],
+            ),
+            
         },
 )
 async def refresh_user(request: Request, container: Container) -> Response:
 
     auth_service = container.resolve(AuthService)
+
+    client_ip = request.client.host
 
     refresh_token = request.cookies.get("refresh_token")
     access_token = request.cookies.get("access_token")
@@ -277,7 +324,7 @@ async def refresh_user(request: Request, container: Container) -> Response:
         )
 
     try:
-        new_access, new_refresh = await auth_service.refresh_tokens(refresh_token, access_token)
+        new_access, new_refresh = await auth_service.refresh_tokens(refresh_token, access_token, client_ip)
 
         response = Response({"detail": "Token refreshed"})
 
@@ -302,6 +349,12 @@ async def refresh_user(request: Request, container: Container) -> Response:
         )
 
         return response
+
+    except TooManyRequestsError:
+        raise HTTPException(
+            status_code=HTTP_429_TOO_MANY_REQUESTS,
+            detail="Слишком много попыток обновления токенов. Попробуйте позже."
+        ) from None
 
     except Exception:
         raise HTTPException(

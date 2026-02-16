@@ -17,7 +17,8 @@ from app.api.exceptions.problem_details_dto import ProblemDetailsDTO
 
 client = AsyncMongoClient(Config.DATABASE_URL)
 minio_gateway = MinioGateway()
-redis_gateway = RedisGateway()
+redis_blacklist_gateway = RedisGateway(db=Config.REDIS_TOKENS_BLACKLIST_DB)
+redis_rate_limit_gateway = RedisGateway(db=Config.REDIS_RATE_LIMITING_DB)
 
 @get(
     "/health/server",
@@ -167,8 +168,10 @@ async def minio_health_check() -> JSONResponse:
 async def redis_health_check() -> JSONResponse:
     """Проверка подключения к Redis."""
     try:
-        await redis_gateway.connect()
-        _ = await redis_gateway._client.ping()
+        await redis_blacklist_gateway.connect()
+        _ = await redis_blacklist_gateway._client.ping()
+        await redis_rate_limit_gateway.connect()
+        _ = await redis_rate_limit_gateway._client.ping()
         return JSONResponse({"status": "ok", "redis": "connected"})
     except Exception as e:
         return JSONResponse(
@@ -229,8 +232,10 @@ async def all_services_health_check() -> JSONResponse:
     
     # Проверка Redis
     try:
-        await redis_gateway.connect()
-        _ = await redis_gateway._client.ping()
+        await redis_blacklist_gateway.connect()
+        _ = await redis_blacklist_gateway._client.ping()
+        await redis_rate_limit_gateway.connect()
+        _ = await redis_rate_limit_gateway._client.ping()
     except Exception as e:
         errors["redis"] = f"failed: {str(e)}"
     

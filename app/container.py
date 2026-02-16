@@ -8,7 +8,8 @@ from app.adapters.gateways.redis import RedisGateway
 from app.adapters.gateways.s3 import MinioGateway
 from app.adapters.repositories.image_repo import ImageRepo
 from app.adapters.repositories.mongo_repo import MongoRepo
-from app.adapters.repositories.redis_repo import RedisRepo
+from app.adapters.repositories.redis_blacklist_repo import RedisBlacklistRepo
+from app.adapters.repositories.redis_rate_limit_repo import RedisRateLimitRepo
 from app.adapters.repositories.user_repo import UserRepo
 from app.config import Config
 from app.core.services.auth_service import AuthService
@@ -25,12 +26,32 @@ def build_container() -> Container:
     # MongoGateway
     container.register(MongoGateway, factory=lambda: MongoGateway())
     
-    #Redis
-    container.register(RedisGateway, factory=lambda: RedisGateway())
+    """Redis и child репозитории"""
+    class RedisBlacklistGateway(RedisGateway):
+        pass
+
+    class RedisRateLimitGateway(RedisGateway):
+        pass
+
     container.register(
-        RedisRepo,
-        factory=lambda: RedisRepo(
-            gateway=container.resolve(RedisGateway)
+        RedisBlacklistGateway, 
+        factory=lambda: RedisBlacklistGateway(db=0)
+        )
+    container.register(
+        RedisBlacklistRepo,
+        factory=lambda: RedisBlacklistRepo(
+            gateway=container.resolve(RedisBlacklistGateway)
+        ),
+    )
+
+    container.register(
+        RedisRateLimitGateway,
+        factory=lambda: RedisRateLimitGateway(db=1),
+    )
+    container.register(
+        RedisRateLimitRepo,
+        factory=lambda: RedisRateLimitRepo(
+            gateway=container.resolve(RedisRateLimitGateway)
         ),
     )
 
@@ -84,7 +105,8 @@ def build_container() -> Container:
         factory=lambda: AuthService(
             repository=container.resolve(UserRepo),
             security=container.resolve(SecurityService),
-            redis_repo=container.resolve(RedisRepo),
+            redis_blacklist_repo=container.resolve(RedisBlacklistRepo),
+            redis_rate_limit_repo=container.resolve(RedisRateLimitRepo),
         ),
     )
 

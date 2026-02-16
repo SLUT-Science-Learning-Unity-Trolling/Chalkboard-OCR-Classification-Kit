@@ -22,6 +22,7 @@ from app.api.routers.user import (
 from app.api.routers.ocr import ocr_to_pdf
 from app.container import build_container
 from app.core.middleware.paseto_refresh import access_token_middleware
+from app.core.middleware.rate_limit import rate_limit_middleware
 
 container = build_container()
 
@@ -72,7 +73,7 @@ app = Litestar(
     openapi_config=openapi_config,
     debug=True,
     cors_config=cors_config,
-    middleware=[access_token_middleware(container=container)],
+    middleware=[access_token_middleware(container=container), rate_limit_middleware(container=container)],
 )
 
 if __name__ == "__main__":

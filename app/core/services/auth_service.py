@@ -8,13 +8,15 @@ from litestar import Request
 from punq import Container
 
 from app.adapters.repositories.abc_repo import RepositoryInterface
-from app.adapters.repositories.redis_repo import RedisRepo
+from app.adapters.repositories.redis_blacklist_repo import RedisBlacklistRepo
+from app.adapters.repositories.redis_rate_limit_repo import RedisRateLimitRepo
 from app.api.schemas.user_dto import UserDTO
 from app.config import config, token_key
 from app.core.errors.auth import (
     InvalidEmailOrPasswordError,
     UnauthorizedError,
 )
+from app.core.errors.security import TooManyRequestsError
 from app.core.services.security_service import SecurityService
 from app.core.services.user_service import UserService
 import paseto
@@ -30,7 +32,8 @@ class AuthService:
         self,
         repository: RepositoryInterface,
         security: SecurityService,
-        redis_repo: RedisRepo,
+        redis_blacklist_repo: RedisBlacklistRepo,
+        redis_rate_limit_repo: RedisRateLimitRepo,
     ) -> None:
         """Инициализация сервиса аутентификации.
 
@@ -40,11 +43,12 @@ class AuthService:
         """
         self._repo = repository
         self._security = security
-        self._redis = redis_repo
+        self._redis_blacklist = redis_blacklist_repo
+        self._redis_rate_limit = redis_rate_limit_repo
         pass
 
     async def auth_existing_user(
-        self, identifier: str, password: str
+        self, identifier: str, password: str, client_ip: str
     ) -> tuple[UserDTO, str]:
         """Аутентификация существующего пользователя по email или username.
 
@@ -54,6 +58,7 @@ class AuthService:
         Args:
             identifier (str): Email или имя пользователя (username).
             password (str): Пароль пользователя.
+            client_ip (str): IP-адрес клиента для проверки rate limit.
 
         Raises:
             InvalidEmailOrPassword: Если пользователь не найден или пароль неверный.
@@ -61,6 +66,7 @@ class AuthService:
         Returns:
             tuple[UserDTO, str]: DTO пользователя и JWT-токен.
         """
+
         if re.match(r"[^@]+@[^@]+\.[^@]+", identifier):
             query = {"email": identifier.lower()}
         else:
@@ -154,9 +160,9 @@ class AuthService:
         return UserDTO.fromrow(user)
     
 
-    async def refresh_tokens(self, refresh_token: str, access_token: str | None) -> tuple[str, str]:
+    async def refresh_tokens(self, refresh_token: str, access_token: str | None, client_ip: str) -> tuple[str, str]:
         """Перевыпуск access и refresh токена по валидному refresh_token."""
-
+        
         if not refresh_token:
             raise UnauthorizedError("Refresh token is required")
 
@@ -180,7 +186,7 @@ class AuthService:
         claims_refresh = _parse_paseto(refresh_token, "refresh")
         refresh_jti = claims_refresh["jti"]
 
-        if self._redis and await self._redis.is_blacklisted(refresh_jti):
+        if self._redis_blacklist and await self._redis_blacklist.is_blacklisted(refresh_jti):
             raise UnauthorizedError("Refresh token is blacklisted")
 
         user_id = claims_refresh["sub"]
@@ -190,7 +196,7 @@ class AuthService:
         if access_token:
             claims_access = _parse_paseto(access_token, "access")
             access_jti = claims_access["jti"]
-            if self._redis and await self._redis.is_blacklisted(access_jti):
+            if self._redis_blacklist and await self._redis_blacklist.is_blacklisted(access_jti):
                 raise UnauthorizedError("Access token is blacklisted")
 
         new_access = paseto.create(
@@ -215,9 +221,9 @@ class AuthService:
             exp_seconds=config.REFRESH_TOKEN_EXPIRE_TIME,
         )
 
-        if self._redis:
-            await self._redis.add_to_blacklist(refresh_jti, expires_in=config.REFRESH_TOKEN_EXPIRE_TIME)
+        if self._redis_blacklist:
+            await self._redis_blacklist.add_to_blacklist(refresh_jti, expires_in=config.REFRESH_TOKEN_EXPIRE_TIME)
             if access_jti:
-                await self._redis.add_to_blacklist(access_jti, expires_in=config.ACCESS_TOKEN_EXPIRE_TIME)
+                await self._redis_blacklist.add_to_blacklist(access_jti, expires_in=config.ACCESS_TOKEN_EXPIRE_TIME)
 
         return new_access, new_refresh

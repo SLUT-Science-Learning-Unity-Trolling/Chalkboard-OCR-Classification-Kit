@@ -9,14 +9,14 @@ from app.config import config
 class RedisGateway:
     """Класс для работы с Redis."""
 
-    def __init__(self) -> None:
+    def __init__(self, db: int) -> None:
         """Конструктор.
 
         Инициализирует параметры подключения, но соединение не создается сразу.
         """
         self._host = config.REDIS_HOST
         self._port = config.REDIS_PORT
-        self._db = config.REDIS_DB
+        self._db = db
         self._password = config.REDIS_PASSWORD
         self._client: Optional[redis.Redis] = None
 
