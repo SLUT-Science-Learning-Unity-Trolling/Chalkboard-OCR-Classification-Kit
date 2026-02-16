@@ -13,7 +13,7 @@ from punq import Container
 
 from app.api.schemas.user_dto import UserDTO
 from app.core.services.auth_service import AuthService
-from app.core.services.ocr_service import image_bytes_to_pdf_bytes
+from app.core.services.ocr_service import images_bytes_to_pdf_bytes
 
 
 @post(
@@ -24,13 +24,29 @@ from app.core.services.ocr_service import image_bytes_to_pdf_bytes
 )
 async def ocr_to_pdf(
     container: Container,
-    current_user: UserDTO,  # <-- КЛЮЧЕВО: добавить аннотацию
-    data: Annotated[UploadFile, Body(media_type=RequestEncodingType.MULTI_PART)],
+    current_user: UserDTO,
+    data: Annotated[list[UploadFile], Body(media_type=RequestEncodingType.MULTI_PART)],
 ) -> Response:
-    image_bytes = await data.read()
-    pdf_bytes = await asyncio.to_thread(image_bytes_to_pdf_bytes, image_bytes)
+    """
+    Принимает несколько изображений и возвращает один PDF,
+    где перед каждым блоком текста будет:
+        Фото 1
+        Фото 2
+        ...
+    """
 
-    out_name = (data.filename or "document").rsplit(".", 1)[0] + ".pdf"
+    images_bytes: list[bytes] = []
+
+    for file in data:
+        images_bytes.append(await file.read())
+
+    pdf_bytes = await asyncio.to_thread(
+        images_bytes_to_pdf_bytes,
+        images_bytes,
+    )
+
+    out_name = "document.pdf"
+
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

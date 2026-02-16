@@ -11,23 +11,18 @@ from typing import Optional, Literal, List, Tuple
 
 import cv2
 import numpy as np
-from PIL import Image, ImageEnhance, ImageFilter, ImageOps
+from PIL import Image, ImageEnhance, ImageOps
 
 from paddleocr import PaddleOCR
 from pix2text import Pix2Text
+from app.config import config
 
-from transformers import AutoTokenizer, AutoModelForCausalLM
-import torch
-
+import json
+import requests
 
 # ============================================================
 # Engines
 # ============================================================
-
-#DEVICE = "cpu" 
-#model_name = "alpindale/Llama-3.2-3B"
-#tokenizer = AutoTokenizer.from_pretrained(model_name)
-#model = AutoModelForCausalLM.from_pretrained(model_name)
 logger = logging.getLogger(__name__)
 MathDelims = Literal["dollars", "single_backslash"]
 
@@ -368,7 +363,6 @@ def _pix2text_detect_and_recognize_formulas(
     img0 = img_pil.convert("RGB")
     w, h = img0.size
 
-    # СТАЛО
     analyzer_outs = tfo.mfd(
         img0.copy(),
         resized_shape=resized_shape,
@@ -493,40 +487,10 @@ def _paddle_text_boxes(paddle: PaddleOCR, img_bgr: np.ndarray) -> List[OcrBox]:
             outs.append(OcrBox(type="text", text=txt, score=score, box=box))
     return outs
 
-_MATH_BLOCK_RE = re.compile(r"(\$\$.*?\$\$|\\\[.*?\\\]|\\\(.*?\\\))", re.DOTALL)
-
-#def correct_text_with_llama(md: str, max_chunk_tokens: int = 1024) -> str:
-#    """
-#    Исправляет текст (русский, Markdown) через LLaMA.
-#    Формулы оставляются как есть.
-#    """
-#    parts = _MATH_BLOCK_RE.split(md)
-#    corrected_parts = []
-#
-#    for part in parts:
-#        if not part:
-#            continue
-#        if _MATH_BLOCK_RE.fullmatch(part):
-#            corrected_parts.append(part)
-#        else:
-#            tokens = tokenizer(part, return_tensors="pt").input_ids[0]
-#            start_idx = 0
-#            while start_idx < len(tokens):
-#                end_idx = min(start_idx + max_chunk_tokens, len(tokens))
-#                chunk_tokens = tokens[start_idx:end_idx].unsqueeze(0).to(model.device)
-#                with torch.no_grad():
-#                    output_ids = model.generate(
-#                        chunk_tokens,
-#                        max_new_tokens=512,
-#                        do_sample=False,
-#                        temperature=0.0,
-#                        pad_token_id=tokenizer.eos_token_id,
-#                   )
-#                corrected_chunk = tokenizer.decode(output_ids[0], skip_special_tokens=True)
-#                corrected_parts.append(corrected_chunk)
-#                start_idx = end_idx
-#
-#    return "".join(corrected_parts)
+_MATH_BLOCK_RE = re.compile(
+    r"(\$\$.*?\$\$|\$(?:\\.|[^$\\])+\$|\\\[.*?\\\]|\\\(.*?\\\))",
+    re.DOTALL,
+)
 
 _LAT2CYR = str.maketrans({
     "a": "а", "A": "А",
@@ -612,7 +576,6 @@ def image_bytes_to_markdown(
     )
     logger.info(f"After preprocess: {img.size}")
 
-    # 1) Формулы (Pix2Text)
     formula_boxes: List[OcrBox] = []
     if contain_formula:
         formula_boxes = _pix2text_detect_and_recognize_formulas(
@@ -622,12 +585,10 @@ def image_bytes_to_markdown(
             mfr_batch_size=1,
         )
 
-    # 2) Текст (PaddleOCR) на изображении с замаскированными формулами
     bgr = _pil_to_bgr(img)
     bgr_masked = _mask_polys_white(bgr, [fb.box for fb in formula_boxes])
     text_boxes = _paddle_text_boxes(paddle, bgr_masked)
 
-    # 3) Merge -> Markdown
     md = _boxes_to_markdown(text_boxes + formula_boxes, math_delims=math_delims)
     md = replace_lat_to_cyr_outside_math(md)
     md = unwrap_plain_text_math(md)
@@ -723,11 +684,141 @@ def markdown_to_pdf_bytes(
 
         return out_pdf.read_bytes()
 
+# ============================================================
+# Multiple images support
+# ============================================================
 
-def image_bytes_to_pdf_bytes(image_bytes: bytes) -> bytes:
+def images_bytes_to_markdown(
+    images: List[bytes],
+    math_delims: MathDelims = "dollars",
+    contain_formula: bool = True,
+) -> str:
+    """
+    Обрабатывает несколько изображений подряд.
+    Перед текстом каждого фото добавляет:
+        Фото 1
+        Фото 2
+        ...
+    """
+    results: List[str] = []
+
+    for idx, image_bytes in enumerate(images, start=1):
+        logger.info(f"Processing image #{idx}")
+
+        md = image_bytes_to_markdown(
+            image_bytes=image_bytes,
+            math_delims=math_delims,
+            contain_formula=contain_formula,
+        )
+
+        md = restore_paragraphs(md)
+
+        block = f"Фото {idx}\n\n{md.strip()}"
+        results.append(block)
+
+    return "\n\n".join(results)
+
+
+
+logger = logging.getLogger(__name__)
+
+def summarize_markdown_openrouter_requests(
+    md: str,
+    api_key: Optional[str] = None,
+    *,
+    api_base: str = "https://openrouter.ai/api/v1",
+    model: str = "arcee-ai/trinity-large-preview:free",
+    temperature: float = 0.0,
+    max_retries: int = 3,
+) -> str:
+    """
+    Отправляет Markdown на OpenRouter AI через HTTP POST с reasoning и возвращает краткий конспект.
+    
+    Параметры:
+    - md: Markdown-текст для суммаризации.
+    - api_key: ключ OpenRouter API (если None, используется переменная окружения OPENROUTER_API_KEY).
+    - api_base: базовый URL сервиса.
+    - model: модель LLM.
+    - temperature: креативность генерации.
+    - max_retries: число повторов при временных ошибках.
+    
+    Возвращает:
+    - строку с кратким конспектом Markdown + LaTeX.
+    
+    Исключения:
+    - RuntimeError при отсутствии ключа или ошибках API.
+    """
+
+    api_key = config.API_KEY
+    if not api_key:
+        raise RuntimeError("Не найден OpenRouter API key.")
+
+    url = api_base.rstrip("/") + "/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    messages = [
+        {"role": "user", "content": f"Сделай краткий конспект этого текста, сохрани форматы Markdown и формулы LaTeX:\n\n{md}"}
+    ]
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = requests.post(
+                url=url,
+                headers=headers,
+                data=json.dumps({
+                    "model": model,
+                    "messages": messages,
+                    "temperature": temperature,
+                    "reasoning": {"enabled": True}
+                }),
+                timeout=30
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            assistant_msg = data['choices'][0]['message']
+
+            messages.append({
+                "role": "assistant",
+                "content": assistant_msg.get('content'),
+                "reasoning_details": assistant_msg.get('reasoning_details')
+            })
+
+            return assistant_msg.get('content', '').strip()
+
+        except requests.RequestException as e:
+            logger.warning(f"Попытка {attempt} не удалась: {e}")
+            if attempt == max_retries:
+                raise RuntimeError(f"Не удалось получить ответ после {max_retries} попыток: {e}")
+        except (KeyError, ValueError) as e:
+            raise RuntimeError(f"Непредвиденный формат ответа OpenRouter: {e}")
+
+
+def images_bytes_to_pdf_bytes(images: List[bytes], summarize: bool = True) -> bytes:
+    """
+    OCR нескольких фото → единый PDF.
+    Если summarize=True, текст будет дополнительно сокращен через OpenAI.
+    """
+    md = images_bytes_to_markdown(images)
+
+    if summarize:
+        try:
+            md_summary = summarize_markdown_openrouter_requests(md)
+            md = md_summary 
+        except Exception as e:
+            logger.warning(f"Не удалось сделать саммари: {e}")
+
+    return markdown_to_pdf_bytes(md)
+
+
+def image_bytes_to_pdf_bytes(image_bytes: bytes, summarize: bool = True) -> bytes:
     """
     Главная функция OCR→Markdown→PDF.
     Для фото экрана (квадратных) автоматически включает skip_warp=True.
+    Если summarize=True, текст будет дополнительно сокращен через OpenAI.
     """
     img_test = Image.open(io.BytesIO(image_bytes))
     w, h = img_test.size
@@ -744,9 +835,13 @@ def image_bytes_to_pdf_bytes(image_bytes: bytes) -> bytes:
         skip_warp=skip_warp,
         contain_formula=True,
     )
-    # 1) Восстанавливаем переносы
     md = restore_paragraphs(md)
 
-    # 2) Исправляем текст через LLaMA
-    #md = correct_text_with_llama(md)
+    if summarize:
+        try:
+            md_summary = summarize_markdown_openrouter_requests(md)
+            md = md_summary
+        except Exception as e:
+            logger.warning(f"Не удалось сделать саммари: {e}")
+    
     return markdown_to_pdf_bytes(md, math_delims="dollars", debug=False)

@@ -71,7 +71,8 @@ class Config:
     REDIS_RATE_LIMITING_DB = os.getenv("REDIS_RATE_LIMITING_DB",)
     REDIS_PASSWORD = os.getenv("REDIS_PASSWORD",)
     
-
+    API_KEY = os.getenv("OPENAI_API_KEY",)
+    
 config: Config = Config()
 
 token_key = SymmetricKey(
