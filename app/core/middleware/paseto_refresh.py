@@ -1,16 +1,22 @@
+"""Blank."""
+
 from collections.abc import Callable
+
+import paseto
+
 from litestar.connection import Request
 from litestar.datastructures import MutableScopeHeaders
 from litestar.types import ASGIApp, Message, Receive, Scope, Send
 from punq import Container
 
 from app.api.schemas.user_dto import UserDTO
+from app.config import config
 from app.core.services.auth_service import AuthService
-import paseto
+
 
 def access_token_middleware(container: Container) -> Callable[[ASGIApp], ASGIApp]:
-    """
-    Middleware проверяет access_token из cookie и подставляет current_user.
+    """Middleware проверяет access_token из cookie и подставляет current_user.
+
     Если токен отсутствует или невалидный → просто пропускает запрос без user.
     """
 
@@ -23,6 +29,8 @@ def access_token_middleware(container: Container) -> Callable[[ASGIApp], ASGIApp
             request = Request(scope, receive)
             auth_service = container.resolve(AuthService)
             current_user: UserDTO | None = None
+
+            key = config.TOKEN_SECRET_KEY
 
             access_token = request.cookies.get("access_token")
             if access_token:

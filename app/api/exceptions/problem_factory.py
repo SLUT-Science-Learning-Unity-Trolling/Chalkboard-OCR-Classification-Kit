@@ -1,7 +1,10 @@
+"""Фабрика для создания DTO с описанием ошибок."""
+
 from enum import Enum
 
+
 class ErrorCodes(Enum):
-    """Коды ошибок"""
+    """Коды ошибок."""
 
     SERVICE_CONNECTION_ERROR = (
         "service-connection-error",
@@ -45,12 +48,14 @@ class ErrorCodes(Enum):
         429,
     )
 
-    def __init__(self, code: str, title: str, status: int):
+    def __init__(self, code: str, title: str, status: int) -> None:
+        """Конструктор."""
         self.code = code
         self.title = title
         self.status = status
 
-    def example(self, detail: str) -> dict:
+    def example(self, detail: str) -> dict[str, str | int]:
+        """Генерирует словарь с описанием ошибки в формате Problem Details."""
         return {
             "type": f"https://example.com/probs/{self.code}",
             "title": self.title,

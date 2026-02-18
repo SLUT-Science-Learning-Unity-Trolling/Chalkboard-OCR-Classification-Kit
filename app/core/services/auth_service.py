@@ -4,6 +4,8 @@
 import re
 import secrets
 
+import paseto
+
 from litestar import Request
 from punq import Container
 
@@ -16,10 +18,8 @@ from app.core.errors.auth import (
     InvalidEmailOrPasswordError,
     UnauthorizedError,
 )
-from app.core.errors.security import TooManyRequestsError
 from app.core.services.security_service import SecurityService
 from app.core.services.user_service import UserService
-import paseto
 
 
 class AuthService:
@@ -40,6 +40,8 @@ class AuthService:
         Args:
             repository (RepositoryInterface): Репозиторий пользователей.
             security (SecurityService): Сервис для работы с хэшированием паролей.
+            redis_blacklist_repo (RedisBlacklistRepo): Репозиторий для черного списка токенов.
+            redis_rate_limit_repo (RedisRateLimitRepo): Репозиторий для хранения данных о rate limit.
         """
         self._repo = repository
         self._security = security
@@ -49,7 +51,7 @@ class AuthService:
 
     async def auth_existing_user(
         self, identifier: str, password: str, client_ip: str
-    ) -> tuple[UserDTO, str]:
+    ) -> tuple[UserDTO, str, str]:
         """Аутентификация существующего пользователя по email или username.
 
         Проверяет существование пользователя, валидирует пароль и
@@ -66,7 +68,6 @@ class AuthService:
         Returns:
             tuple[UserDTO, str]: DTO пользователя и JWT-токен.
         """
-
         if re.match(r"[^@]+@[^@]+\.[^@]+", identifier):
             query = {"email": identifier.lower()}
         else:
@@ -80,7 +81,6 @@ class AuthService:
         if not self._security.verify_hash(password=password, salt=salt, hash_=hash):
             raise InvalidEmailOrPasswordError
 
-
         access_token = paseto.create(
             key=token_key,
             purpose="local",
@@ -93,7 +93,6 @@ class AuthService:
             },
             exp_seconds=config.ACCESS_TOKEN_EXPIRE_TIME,
         )
-
 
         refresh_token = paseto.create(
             key=token_key,
@@ -158,35 +157,41 @@ class AuthService:
             return None
 
         return UserDTO.fromrow(user)
-    
 
-    async def refresh_tokens(self, refresh_token: str, access_token: str | None, client_ip: str) -> tuple[str, str]:
+    async def refresh_tokens(
+        self, refresh_token: str, access_token: str | None, client_ip: str
+    ) -> tuple[str, str]:
         """Перевыпуск access и refresh токена по валидному refresh_token."""
-        
         if not refresh_token:
             raise UnauthorizedError("Refresh token is required")
 
-        def _parse_paseto(token: str, expected_type: str) -> dict:
+        def _parse_paseto(token: str, expected_type: str) -> dict[str, str]:
             """Парсинг PASETO и проверка типа токена."""
             try:
                 parsed = paseto.parse(key=token_key, purpose="local", token=token)
                 claims = parsed["message"]
             except Exception:
-                raise UnauthorizedError(f"Invalid {expected_type} token")
+                raise UnauthorizedError(f"Invalid {expected_type} token") from None
 
             if claims.get("type") != expected_type:
-                raise UnauthorizedError(f"Token is not of type {expected_type}")
+                raise UnauthorizedError(
+                    f"Token is not of type {expected_type}"
+                ) from None
 
             jti = claims.get("jti")
             if not jti:
-                raise UnauthorizedError(f"{expected_type.capitalize()} token missing jti")
+                raise UnauthorizedError(
+                    f"{expected_type.capitalize()} token missing jti"
+                ) from None
 
             return claims
 
         claims_refresh = _parse_paseto(refresh_token, "refresh")
         refresh_jti = claims_refresh["jti"]
 
-        if self._redis_blacklist and await self._redis_blacklist.is_blacklisted(refresh_jti):
+        if self._redis_blacklist and await self._redis_blacklist.is_blacklisted(
+            refresh_jti
+        ):
             raise UnauthorizedError("Refresh token is blacklisted")
 
         user_id = claims_refresh["sub"]
@@ -196,7 +201,9 @@ class AuthService:
         if access_token:
             claims_access = _parse_paseto(access_token, "access")
             access_jti = claims_access["jti"]
-            if self._redis_blacklist and await self._redis_blacklist.is_blacklisted(access_jti):
+            if self._redis_blacklist and await self._redis_blacklist.is_blacklisted(
+                access_jti
+            ):
                 raise UnauthorizedError("Access token is blacklisted")
 
         new_access = paseto.create(
@@ -222,8 +229,12 @@ class AuthService:
         )
 
         if self._redis_blacklist:
-            await self._redis_blacklist.add_to_blacklist(refresh_jti, expires_in=config.REFRESH_TOKEN_EXPIRE_TIME)
+            await self._redis_blacklist.add_to_blacklist(
+                refresh_jti, expires_in=config.REFRESH_TOKEN_EXPIRE_TIME
+            )
             if access_jti:
-                await self._redis_blacklist.add_to_blacklist(access_jti, expires_in=config.ACCESS_TOKEN_EXPIRE_TIME)
+                await self._redis_blacklist.add_to_blacklist(
+                    access_jti, expires_in=config.ACCESS_TOKEN_EXPIRE_TIME
+                )
 
         return new_access, new_refresh

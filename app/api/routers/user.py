@@ -5,7 +5,7 @@
 from typing import Annotated
 
 from bson import ObjectId
-from litestar import delete, get, post
+from litestar import Router, delete, get, post
 from litestar.datastructures import UploadFile
 from litestar.di import Provide
 from litestar.dto import DataclassDTO
@@ -23,9 +23,9 @@ from litestar.status_codes import (
 )
 from punq import Container
 
+from app.api.exceptions.problem_details_dto import ProblemDetailsDTO
 from app.api.exceptions.problem_factory import ErrorCodes
 from app.api.schemas.image_dto import ImageDTO
-from app.api.exceptions.problem_details_dto import ProblemDetailsDTO
 from app.api.schemas.user_dto import UserCreateDTO, UserDTO
 from app.core.domain.models.image import UploadedImage
 from app.core.domain.models.user import User
@@ -46,7 +46,7 @@ from app.core.services.user_service import UserService
 
 
 @post(
-    "/users/create",
+    "/create",
     summary="Создание пользователя",
     description="Эндпоинт регистрации нового пользователя.",
     tags=["Пользователь"],
@@ -72,7 +72,7 @@ from app.core.services.user_service import UserService
         HTTP_429_TOO_MANY_REQUESTS: ResponseSpec(
             description="Слишком много запросов",
             data_container=ProblemDetailsDTO,
-             examples=[
+            examples=[
                 Example(
                     value=ErrorCodes.TOO_MANY_REQUESTS_ERROR.example(
                         "Слишком много попыток авторизации. Попробуйте позже."
@@ -86,6 +86,7 @@ async def create_user(
     data: UserCreateDTO,
     container: Container,
 ) -> UserDTO:
+    """Запрос на создание нового пользователя."""
     user_service = container.resolve(UserService)
 
     try:
@@ -97,23 +98,45 @@ async def create_user(
         )
         return UserDTO.fromrow(user.__dict__)
 
-    except (
-        PasswordDontMatchError,
-        PasswordValidationError,
-        EmailValidationError,
-        UsernameValidationError,
-        EmailAlreadyTakenError,
-        UsernameAlreadyTakenError,
-    ) as e:
+    except PasswordDontMatchError:
         raise HTTPException(
             status_code=HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
+            detail="Пароли не совпадают",
+        ) from None
 
+    except PasswordValidationError:
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail="Пароль не соответствует требованиям безопасности",
+        ) from None
+
+    except EmailValidationError:
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail="Введите корректный email",
+        ) from None
+
+    except UsernameValidationError:
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail="Логин должен быть от 3 до 20 символов и содержать только буквы, цифры и подчеркивания",
+        ) from None
+
+    except EmailAlreadyTakenError:
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail="Email уже зарегистрирован",
+        ) from None
+
+    except UsernameAlreadyTakenError:
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail="Данный логин уже зарегистрирован",
+        ) from None
 
 
 @post(
-    "/users/upload_image",
+    "/upload_image",
     summary="Загрузка изображения",
     description="Загрузка изображения текущего пользователя.",
     tags=["Пользователь"],
@@ -150,7 +173,7 @@ async def create_user(
         HTTP_429_TOO_MANY_REQUESTS: ResponseSpec(
             description="Слишком много запросов",
             data_container=ProblemDetailsDTO,
-             examples=[
+            examples=[
                 Example(
                     value=ErrorCodes.TOO_MANY_REQUESTS_ERROR.example(
                         "Слишком много попыток авторизации. Попробуйте позже."
@@ -165,6 +188,7 @@ async def upload_image(
     current_user: UserDTO,
     data: Annotated[UploadFile, Body(media_type=RequestEncodingType.MULTI_PART)],
 ) -> ImageDTO:
+    """Запрос на загрузку изображения для текущего пользователя."""
     user_service = container.resolve(UserService)
 
     if not current_user:
@@ -184,18 +208,21 @@ async def upload_image(
 
         return ImageDTO.fromrow(image_dict)
 
-    except (
-        ImageExtensionValidationError,
-        ImageUploadError,
-    ) as e:
+    except ImageExtensionValidationError:
         raise HTTPException(
             status_code=HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
+            detail="Недопустимое расширение файла. Разрешены только .jpg, .jpeg, .png",
+        ) from None
+
+    except ImageUploadError:
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail="Ошибка загрузки изображения. Попробуйте еще раз.",
+        ) from None
 
 
 @get(
-    "/users/get_all_user_images",
+    "/get_all_user_images",
     summary="Получение всех изображений пользователя",
     description="Возвращает список изображений текущего пользователя.",
     tags=["Пользователь"],
@@ -221,7 +248,7 @@ async def upload_image(
         HTTP_429_TOO_MANY_REQUESTS: ResponseSpec(
             description="Слишком много запросов",
             data_container=ProblemDetailsDTO,
-             examples=[
+            examples=[
                 Example(
                     value=ErrorCodes.TOO_MANY_REQUESTS_ERROR.example(
                         "Слишком много попыток авторизации. Попробуйте позже."
@@ -235,6 +262,18 @@ async def get_all_user_images(
     container: Container,
     current_user: UserDTO,
 ) -> list[ImageDTO]:
+    """Запрос всех изображений текущего пользователя.
+
+    Args:
+        container (Container): Контейнер зависимостей для получения сервисов.
+        current_user (UserDTO): Текущий авторизованный пользователь.
+
+    Returns:
+        list[ImageDTO]: Список DTO изображений пользователя.
+
+    Raises:
+        HTTPException: Если пользователь не авторизован.
+    """
     user_service = container.resolve(UserService)
 
     if not current_user:
@@ -249,8 +288,9 @@ async def get_all_user_images(
 
     return [ImageDTO.fromrow(image.__dict__) for image in images]
 
+
 @delete(
-    "/users/delete_image",
+    "/delete_image",
     summary="Удаление изображения",
     description="Удаляет изображение текущего пользователя по URL.",
     tags=["Пользователь"],
@@ -286,7 +326,7 @@ async def get_all_user_images(
         HTTP_429_TOO_MANY_REQUESTS: ResponseSpec(
             description="Слишком много запросов",
             data_container=ProblemDetailsDTO,
-             examples=[
+            examples=[
                 Example(
                     value=ErrorCodes.TOO_MANY_REQUESTS_ERROR.example(
                         "Слишком много попыток авторизации. Попробуйте позже."
@@ -298,9 +338,22 @@ async def get_all_user_images(
 )
 async def delete_image(
     container: Container,
-    current_user: UserDTO,
+    current_user: UserDTO | None,
     url: str,
 ) -> dict[str, str]:
+    """Удаляет изображение текущего пользователя по URL.
+
+    Args:
+        container (Container): Контейнер зависимостей для получения сервисов.
+        current_user (UserDTO | None): Текущий авторизованный пользователь или None, если не авторизован.
+        url (str): URL изображения для удаления.
+
+    Returns:
+        dict[str, str]: Словарь с сообщением об успешном удалении.
+
+    Raises:
+        HTTPException: Если пользователь не авторизован или произошла ошибка удаления изображения.
+    """
     user_service = container.resolve(UserService)
 
     if not current_user:
@@ -311,9 +364,17 @@ async def delete_image(
 
     try:
         await user_service.delete_image(user_id=current_user.id, url=url)
-        return {"detail": "Изображение успешно удалено"}
-    except DeleteImageError as e:
+        return {"detail": "Изображение удалено"}
+
+    except DeleteImageError:
         raise HTTPException(
             status_code=HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
+            detail="Ошибка удаления изображения",
+        ) from None
+
+
+users_router = Router(
+    path="/users",
+    tags=["Пользователь"],
+    route_handlers=[create_user, upload_image, get_all_user_images, delete_image],
+)

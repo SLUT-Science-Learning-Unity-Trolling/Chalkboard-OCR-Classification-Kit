@@ -2,7 +2,7 @@
 # RedisGateway
 
 import redis.asyncio as redis
-from typing import Optional
+
 from app.config import config
 
 
@@ -18,7 +18,7 @@ class RedisGateway:
         self._port = config.REDIS_PORT
         self._db = db
         self._password = config.REDIS_PASSWORD
-        self._client: Optional[redis.Redis] = None
+        self._client: redis.Redis | None = None
 
     async def connect(self) -> None:
         """Устанавливает соединение с Redis."""

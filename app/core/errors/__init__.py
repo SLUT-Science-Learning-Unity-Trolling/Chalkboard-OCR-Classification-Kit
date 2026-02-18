@@ -1,3 +1,5 @@
+"""Blank."""
+
 from .user import UserCreationError
 
 

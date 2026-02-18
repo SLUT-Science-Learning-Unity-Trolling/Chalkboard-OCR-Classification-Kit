@@ -10,7 +10,6 @@ from uuid import uuid4
 from bson import ObjectId
 from litestar.datastructures import UploadFile
 
-from app import config
 from app.adapters.gateways.s3 import MinioGateway
 from app.adapters.repositories.abc_repo import RepositoryInterface
 from app.core.domain.models.image import UploadedImage

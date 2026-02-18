@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from paseto.keys.symmetric_key import SymmetricKey
 from paseto.protocols.v4 import ProtocolVersion4
 
+
 load_dotenv()
 
 
@@ -25,7 +26,7 @@ class Config:
     )
 
     """Конфигурация токенов."""
-    TOKEN_SECRET_KEY = os.getenv("TOKEN_SECRET_KEY")
+    TOKEN_SECRET_KEY = str(os.getenv("TOKEN_SECRET_KEY"))
     ACCESS_TOKEN_EXPIRE_TIME = 300
     REFRESH_TOKEN_EXPIRE_TIME = 1209600
 
@@ -65,17 +66,15 @@ class Config:
     DEBUG: bool = os.getenv("DEBUG", "True") == "True"
 
     """Конфигурация Redis."""
-    REDIS_HOST = os.getenv("REDIS_HOST",)
-    REDIS_PORT = os.getenv("REDIS_PORT",)
-    REDIS_TOKENS_BLACKLIST_DB = os.getenv("REDIS_TOKENS_BLACKLIST_DB",)
-    REDIS_RATE_LIMITING_DB = os.getenv("REDIS_RATE_LIMITING_DB",)
-    REDIS_PASSWORD = os.getenv("REDIS_PASSWORD",)
-    
-    API_KEY = os.getenv("OPENAI_API_KEY",)
-    
+    REDIS_HOST = os.getenv("REDIS_HOST")
+    REDIS_PORT = os.getenv("REDIS_PORT")
+    REDIS_TOKENS_BLACKLIST_DB = os.getenv("REDIS_TOKENS_BLACKLIST_DB")
+    REDIS_RATE_LIMITING_DB = os.getenv("REDIS_RATE_LIMITING_DB")
+    REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
+
+    API_KEY = os.getenv("OPENAI_API_KEY")
+
+
 config: Config = Config()
 
-token_key = SymmetricKey(
-    config.TOKEN_SECRET_KEY.encode(),
-    ProtocolVersion4
-)
+token_key = SymmetricKey(config.TOKEN_SECRET_KEY.encode(), ProtocolVersion4)

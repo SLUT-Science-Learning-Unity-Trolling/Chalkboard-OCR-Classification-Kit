@@ -1,15 +1,19 @@
+"""Middleware для rate limiting."""
+
 from collections.abc import Callable
+
 from litestar.connection import Request
-from litestar.types import ASGIApp, Receive, Scope, Send
-from punq import Container
 from litestar.exceptions import HTTPException
 from litestar.status_codes import HTTP_429_TOO_MANY_REQUESTS
+from litestar.types import ASGIApp, Receive, Scope, Send
+from punq import Container
 
 from app.adapters.repositories.redis_rate_limit_repo import RedisRateLimitRepo
 
+
 def rate_limit_middleware(container: Container) -> Callable[[ASGIApp], ASGIApp]:
-    """
-    Middleware для rate limiting.
+    """Middleware для rate limiting.
+
     Разделяет лимиты на login, refresh и остальные запросы.
     """
 
@@ -31,11 +35,13 @@ def rate_limit_middleware(container: Container) -> Callable[[ASGIApp], ASGIApp]:
             else:
                 limit, window, action = 120, 60, "general"
 
-            allowed = await redis_rate_limit.is_allowed(client_ip, action, limit, window)
+            allowed = await redis_rate_limit.is_allowed(
+                client_ip, action, limit, window
+            )
             if not allowed:
                 raise HTTPException(
                     status_code=HTTP_429_TOO_MANY_REQUESTS,
-                    detail="Слишком много запросов, повторите позже."
+                    detail="Слишком много запросов, повторите позже.",
                 )
 
             await app(scope, receive, send)

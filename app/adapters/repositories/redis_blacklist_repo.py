@@ -6,7 +6,7 @@ from app.adapters.gateways.redis import RedisGateway
 
 class RedisBlacklistRepo:
     """Репозиторий для работы с Redis."""
-    
+
     def __init__(self, gateway: RedisGateway) -> None:
         """Инициализация репозитория.
 

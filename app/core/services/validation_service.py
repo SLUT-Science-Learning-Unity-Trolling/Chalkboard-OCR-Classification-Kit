@@ -62,7 +62,6 @@ class ValidationService:
 
         return True
 
-
     async def validate_username(self, username: str) -> bool:
         """Проверка имени пользователя.
 
@@ -97,7 +96,6 @@ class ValidationService:
 
         return True
 
-
     async def validate_image_extension(self, file: UploadFile) -> bool:
         """Проверка расширения файла.
 
@@ -113,7 +111,6 @@ class ValidationService:
         ext = ext.lower().lstrip(".")
 
         return ext in self.config.ALLOWED_IMAGE_EXTENSIONS
-
 
     async def validate_email(self, email: str) -> bool:
         """Проверка email.

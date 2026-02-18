@@ -1,20 +1,21 @@
 """Модуль содержит эндпоинты авторизации и выхода из профиля."""
 # API_Auth
 
-from litestar import Request, Response, get, post
+import paseto
+
+from litestar import Request, Response, Router, get, post
 from litestar.di import Provide
 from litestar.dto import DataclassDTO
 from litestar.exceptions import HTTPException
+from litestar.openapi import ResponseSpec
+from litestar.openapi.spec import Example
 from litestar.status_codes import (
     HTTP_200_OK,
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
-    HTTP_500_INTERNAL_SERVER_ERROR,
     HTTP_429_TOO_MANY_REQUESTS,
+    HTTP_500_INTERNAL_SERVER_ERROR,
 )
-from litestar.openapi import ResponseSpec
-from litestar.openapi.spec import Example
-import paseto
 from punq import Container
 
 from app.adapters.repositories.redis_blacklist_repo import RedisBlacklistRepo
@@ -22,21 +23,21 @@ from app.api.exceptions.problem_details_dto import ProblemDetailsDTO
 from app.api.exceptions.problem_factory import ErrorCodes
 from app.api.schemas.user_dto import UserDTO, UserLoginDTO
 from app.config import config, token_key
-from app.core.errors.auth import InvalidEmailOrPasswordError
+from app.core.errors.auth import InvalidEmailOrPasswordError, UnauthorizedError
 from app.core.errors.security import TooManyRequestsError
 from app.core.services.auth_service import AuthService
 
 
 @post(
-    "/auth/login",
+    "/login",
     summary="Авторизация пользователя",
-    description="Эндпоинт для авторизации пользователя с установкой Paseto в cookie." \
+    description="Эндпоинт для авторизации пользователя с установкой Paseto в cookie."
     "Принимает email или username и пароль, возвращает данные пользователя и устанавливает access и refresh токены в cookie.",
     tags=["Авторизация"],
     status_code=HTTP_200_OK,
     dto=DataclassDTO[UserLoginDTO],
     return_dto=DataclassDTO[UserDTO],
-    responses = {
+    responses={
         HTTP_200_OK: ResponseSpec(
             description="Пользователь авторизован",
             data_container=UserDTO,
@@ -64,7 +65,7 @@ from app.core.services.auth_service import AuthService
         HTTP_400_BAD_REQUEST: ResponseSpec(
             description="Невалидные данные",
             data_container=ProblemDetailsDTO,
-             examples=[
+            examples=[
                 Example(
                     value=ErrorCodes.VALIDATION_ERROR.example(
                         "Ошибка валидации данных"
@@ -75,7 +76,7 @@ from app.core.services.auth_service import AuthService
         HTTP_500_INTERNAL_SERVER_ERROR: ResponseSpec(
             description="Внутренняя ошибка сервера",
             data_container=ProblemDetailsDTO,
-             examples=[
+            examples=[
                 Example(
                     value=ErrorCodes.SERVICE_CONNECTION_ERROR.example(
                         "Внутренняя ошибка сервера"
@@ -86,7 +87,7 @@ from app.core.services.auth_service import AuthService
         HTTP_429_TOO_MANY_REQUESTS: ResponseSpec(
             description="Слишком много запросов",
             data_container=ProblemDetailsDTO,
-             examples=[
+            examples=[
                 Example(
                     value=ErrorCodes.TOO_MANY_REQUESTS_ERROR.example(
                         "Слишком много попыток авторизации. Попробуйте позже."
@@ -106,6 +107,7 @@ async def auth_user(
     Args:
         data (UserLoginDTO): Данные для авторизации пользователя
         container (Container): Контейнер
+        request (Request): HTTP запрос для получения IP клиента
 
     Returns:
         Response: Ответ с PASETO в cookie
@@ -150,20 +152,21 @@ async def auth_user(
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED, detail="Неверная почта/логин или пароль"
         ) from None
-    
+
     except TooManyRequestsError:
         raise HTTPException(
-            status_code=HTTP_429_TOO_MANY_REQUESTS, detail="Слишком много попыток авторизации. Попробуйте позже."
+            status_code=HTTP_429_TOO_MANY_REQUESTS,
+            detail="Слишком много попыток авторизации. Попробуйте позже.",
         ) from None
 
 
 @post(
-    "/auth/logout",
+    "/logout",
     summary="Выход из профиля",
     description="Эндпоинт выхода из профиля. Удаляет Paseto из cookie",
     tags=["Авторизация"],
     status_code=HTTP_200_OK,
-    responses = {
+    responses={
         HTTP_200_OK: ResponseSpec(
             description="Пользователь успешно вышел из аккаунта",
             data_container=None,
@@ -177,7 +180,7 @@ async def logout_user(request: Request, container: Container) -> Response:
     """
     redis_repo: RedisBlacklistRepo = container.resolve(RedisBlacklistRepo)
 
-    async def _blacklist_token(token: str, expected_type: str, expires_in: int):
+    async def _blacklist_token(token: str, expected_type: str, expires_in: int) -> None:
         """Парсит токен и добавляет его jti в blacklist, если валиден."""
         try:
             parsed = paseto.parse(key=token_key, purpose="local", token=token)
@@ -188,7 +191,9 @@ async def logout_user(request: Request, container: Container) -> Response:
                 if jti and redis_repo:
                     await redis_repo.add_to_blacklist(jti, expires_in=expires_in)
         except Exception:
-            pass
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST, detail="Невалидный токен"
+            ) from None
 
     refresh_token = request.cookies.get("refresh_token")
     access_token = request.cookies.get("access_token")
@@ -221,10 +226,10 @@ async def logout_user(request: Request, container: Container) -> Response:
     "/me",
     summary="Данные текущего пользователя",
     description="Эндпоинт возвращает данные текущего авторизованного пользователя",
-    tags=["Дебаг"],
+    tags=["Debug", "Авторизация"],
     dependencies={"current_user": Provide(AuthService.get_current_user)},
     status_code=HTTP_200_OK,
-    responses = {
+    responses={
         HTTP_200_OK: ResponseSpec(
             description="Пользователь авторизован",
             data_container=UserDTO,
@@ -252,7 +257,7 @@ async def logout_user(request: Request, container: Container) -> Response:
         HTTP_429_TOO_MANY_REQUESTS: ResponseSpec(
             description="Слишком много запросов",
             data_container=ProblemDetailsDTO,
-             examples=[
+            examples=[
                 Example(
                     value=ErrorCodes.TOO_MANY_REQUESTS_ERROR.example(
                         "Слишком много попыток авторизации. Попробуйте позже."
@@ -274,43 +279,56 @@ async def get_me(current_user: UserDTO | None) -> UserDTO:
 
 
 @post(
-        "/auth/refresh", 
-        summary="Обновление access токена",
-        description="Эндпоинт обновляет access токен по refresh токену",
-        status_code=HTTP_200_OK,
-        tags=["Авторизация"],
-        responses = {
-            HTTP_200_OK: ResponseSpec(
-                description="Токены успешно обновлены",
-                data_container=None,
-            ),
-            HTTP_401_UNAUTHORIZED: ResponseSpec(
-                description="Невалидный refresh токен",
-                data_container=ProblemDetailsDTO,
-                examples=[
-                    Example(
-                        value=ErrorCodes.AUTHENTICATION_ERROR.example(
-                            "Невалидный или просроченный refresh токен"
-                        ),
-                    )
-                ],
-            ),
-            HTTP_429_TOO_MANY_REQUESTS: ResponseSpec(
-                description="Слишком много попыток авторизации",
-                data_container=ProblemDetailsDTO,
-                examples=[
-                    Example(
-                        value=ErrorCodes.TOO_MANY_REQUESTS_ERROR.example(
-                            "Слишком много попыток обновления токенов. Попробуйте позже."
-                        ),
-                    )
-                ],
-            ),
-            
-        },
+    "/refresh",
+    summary="Обновление access токена",
+    description="Эндпоинт обновляет access токен по refresh токену",
+    status_code=HTTP_200_OK,
+    tags=["Авторизация"],
+    responses={
+        HTTP_200_OK: ResponseSpec(
+            description="Токены успешно обновлены",
+            data_container=None,
+        ),
+        HTTP_401_UNAUTHORIZED: ResponseSpec(
+            description="Невалидный refresh токен",
+            data_container=ProblemDetailsDTO,
+            examples=[
+                Example(
+                    value=ErrorCodes.AUTHENTICATION_ERROR.example(
+                        "Невалидный или просроченный refresh токен"
+                    ),
+                )
+            ],
+        ),
+        HTTP_429_TOO_MANY_REQUESTS: ResponseSpec(
+            description="Слишком много попыток авторизации",
+            data_container=ProblemDetailsDTO,
+            examples=[
+                Example(
+                    value=ErrorCodes.TOO_MANY_REQUESTS_ERROR.example(
+                        "Слишком много попыток обновления токенов. Попробуйте позже."
+                    ),
+                )
+            ],
+        ),
+    },
 )
 async def refresh_user(request: Request, container: Container) -> Response:
+    """Эндпоинт обновляет access токен по refresh токену.
 
+    Получает refresh токен из cookie, проверяет его валидность и выдает новый access токен.
+
+    Args:
+        request (Request): HTTP запрос с refresh токеном в
+        container (Container): Контейнер для получения сервисов
+
+    Returns:
+        Response: Ответ с новым access токеном в cookie
+
+    Raises:
+        HTTPException: 401 если refresh токен не валиден или отсутствует
+        HTTPException: 429 если слишком много попыток обновления токенов
+    """
     auth_service = container.resolve(AuthService)
 
     client_ip = request.client.host
@@ -319,12 +337,13 @@ async def refresh_user(request: Request, container: Container) -> Response:
     access_token = request.cookies.get("access_token")
     if not refresh_token:
         raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail="Нет refresh токена"
+            status_code=HTTP_401_UNAUTHORIZED, detail="Нет refresh токена"
         )
 
     try:
-        new_access, new_refresh = await auth_service.refresh_tokens(refresh_token, access_token, client_ip)
+        new_access, new_refresh = await auth_service.refresh_tokens(
+            refresh_token, access_token, client_ip
+        )
 
         response = Response({"detail": "Token refreshed"})
 
@@ -353,11 +372,23 @@ async def refresh_user(request: Request, container: Container) -> Response:
     except TooManyRequestsError:
         raise HTTPException(
             status_code=HTTP_429_TOO_MANY_REQUESTS,
-            detail="Слишком много попыток обновления токенов. Попробуйте позже."
+            detail="Слишком много попыток обновления токенов. Попробуйте позже.",
         ) from None
 
-    except Exception:
+    except UnauthorizedError:
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
-            detail="Невалидный или просроченный refresh токен"
-        )   
+            detail="Невалидный или просроченный refresh токен",
+        ) from None
+
+
+auth_router = Router(
+    path="/auth",
+    route_handlers=[
+        auth_user,
+        logout_user,
+        refresh_user,
+        get_me,
+    ],
+    tags=["Авторизация"],
+)

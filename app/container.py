@@ -25,8 +25,9 @@ def build_container() -> Container:
     """Mongo и child репозитории"""
     # MongoGateway
     container.register(MongoGateway, factory=lambda: MongoGateway())
-    
+
     """Redis и child репозитории"""
+
     class RedisBlacklistGateway(RedisGateway):
         pass
 
@@ -34,9 +35,8 @@ def build_container() -> Container:
         pass
 
     container.register(
-        RedisBlacklistGateway, 
-        factory=lambda: RedisBlacklistGateway(db=0)
-        )
+        RedisBlacklistGateway, factory=lambda: RedisBlacklistGateway(db=0)
+    )
     container.register(
         RedisBlacklistRepo,
         factory=lambda: RedisBlacklistRepo(
