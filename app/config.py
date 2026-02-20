@@ -10,7 +10,6 @@ from paseto.protocols.v4 import ProtocolVersion4
 
 load_dotenv()
 
-
 class Config:
     """Класс конфигурации приложения."""
 
@@ -62,8 +61,8 @@ class Config:
     MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
     MINIO_BUCKET = os.getenv("MINIO_BUCKET")
 
-    """Прочая конфигурация."""
-    DEBUG: bool = os.getenv("DEBUG", "True") == "True"
+    """Конфигурация дебага"""
+    DEBUG: bool = os.getenv("DEBUG")
 
     """Конфигурация Redis."""
     REDIS_HOST = os.getenv("REDIS_HOST")
@@ -72,6 +71,7 @@ class Config:
     REDIS_RATE_LIMITING_DB = os.getenv("REDIS_RATE_LIMITING_DB")
     REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
 
+    """Конфигурация API запросов к LLM"""
     API_KEY = os.getenv("OPENAI_API_KEY")
 
 

@@ -100,6 +100,7 @@ poetry run python app/utils/generate_docs.py --push
 
  ```bash
  # MongoDB
+# MongoDB
 DATABASE_HOST=localhost
 DATABASE_COMPOSE_HOST=mongo
 DATABASE_PORT=27017
@@ -120,6 +121,16 @@ MINIO_BUCKET=bucket
 # Redis
 REDIS_HOST=localhost
 REDIS_PORT=6379
-REDIS_DB=0
+REDIS_TOKENS_BLACKLIST_DB=0
+REDIS_RATE_LIMITING_DB=1
 REDIS_PASSWORD=secret
+
+# API KEY
+OPENAI_API_KEY=:D
+
+# PADDLE OCR
+DISABLE_MODEL_SOURCE_CHECK=True
+
+# Other
+DEBUG=True
 ```

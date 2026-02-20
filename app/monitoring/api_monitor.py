@@ -1,0 +1,66 @@
+"""Функция для мониторинга скорости API."""
+from __future__ import annotations
+
+import logging
+import os
+import threading
+
+from collections import Counter, defaultdict
+
+from app.config import config
+
+
+log_dir = "logs"
+os.makedirs(log_dir, exist_ok=True)
+log_path = os.path.join(log_dir, "api.log")
+
+logger = logging.getLogger("api_monitor")
+logger.setLevel(logging.DEBUG if config.DEBUG else logging.INFO)
+file_handler = logging.FileHandler(log_path, encoding="utf-8")
+formatter = logging.Formatter(
+    "[%(asctime)s] %(levelname)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+)
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+
+
+class ApiMonitor:
+    """Простой монитор API запросов с логированием в файл."""
+
+    def __init__(self) -> None:
+        """Конструктор."""
+        self._lock = threading.Lock()
+        self.total_requests = 0
+        self.by_path: Counter[str] = Counter()
+        self.by_method: Counter[str] = Counter()
+        self.by_status: Counter[int] = Counter()
+        self.latencies: defaultdict[str, list[float]] = defaultdict(list)
+        self.debug = bool(config.DEBUG)
+
+    def record(self, path: str, method: str, status: int, latency_ms: float) -> None:
+        """Счётчик."""
+        with self._lock:
+            self.total_requests += 1
+            self.by_path[path] += 1
+            self.by_method[method] += 1
+            self.by_status[status] += 1
+            self.latencies[path].append(latency_ms)
+
+        msg = f"{method} {path} - {status} -> {latency_ms:.1f} ms (total={self.total_requests})"
+        logger.info(msg)
+        if self.debug:
+            print(f"[API MON] {msg}")
+
+    def snapshot(self) -> dict:
+        """Возвращает функцию с avg_latency."""
+        with self._lock:
+            avg_latency = {
+                p: (sum(lst) / len(lst)) if lst else 0.0 for p, lst in self.latencies.items()
+            }
+            return {
+                "total": self.total_requests,
+                "by_path": dict(self.by_path),
+                "by_method": dict(self.by_method),
+                "by_status": dict(self.by_status),
+                "avg_latency_ms": avg_latency,
+            }

@@ -213,3 +213,4 @@ redis.conf/
 /wiki
 .wiki_tmp/
 certs
+/logs

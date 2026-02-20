@@ -6,10 +6,15 @@ from litestar.config.cors import CORSConfig
 from litestar.openapi import OpenAPIConfig
 
 from app.api.routers import api_routers
+from app.config import config
 from app.container import build_container
+from app.core.middleware.api_monitoring import api_monitor_middleware
 from app.core.middleware.paseto_refresh import access_token_middleware
 from app.core.middleware.rate_limit import rate_limit_middleware
 
+
+if config.DEBUG:
+    pass
 
 container = build_container()
 
@@ -47,6 +52,7 @@ app = Litestar(
     middleware=[
         access_token_middleware(container=container),
         rate_limit_middleware(container=container),
+        api_monitor_middleware(container=container),
     ],
 )
 

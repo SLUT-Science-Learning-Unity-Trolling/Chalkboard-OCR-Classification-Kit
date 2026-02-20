@@ -144,7 +144,7 @@ async def auth_user(
             secure=True,
             max_age=config.REFRESH_TOKEN_EXPIRE_TIME,
             samesite="strict",
-            path="/",
+            path="/auth",
         )
         return response
 
@@ -217,7 +217,7 @@ async def logout_user(request: Request, container: Container) -> Response:
         status_code=HTTP_200_OK,
     )
     response.delete_cookie("access_token", path="/")
-    response.delete_cookie("refresh_token", path="/")
+    response.delete_cookie("refresh_token", path="/auth")
 
     return response
 
@@ -364,7 +364,7 @@ async def refresh_user(request: Request, container: Container) -> Response:
             secure=True,
             max_age=config.REFRESH_TOKEN_EXPIRE_TIME,
             samesite="strict",
-            path="/",
+            path="/auth",
         )
 
         return response

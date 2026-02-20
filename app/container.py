@@ -16,6 +16,7 @@ from app.core.services.auth_service import AuthService
 from app.core.services.security_service import SecurityService
 from app.core.services.user_service import UserService
 from app.core.services.validation_service import ValidationService
+from app.monitoring.api_monitor import ApiMonitor
 
 
 def build_container() -> Container:
@@ -113,5 +114,8 @@ def build_container() -> Container:
     """Регистрация конфига"""
     # Config
     container.register("config", instance=Config())
+
+    # AppMonitor
+    container.register(ApiMonitor, ApiMonitor, scope="singleton")
 
     return container
