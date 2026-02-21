@@ -20,7 +20,7 @@ from punq import Container
 
 from app.adapters.repositories.redis_blacklist_repo import RedisBlacklistRepo
 from app.api.exceptions.problem_details_dto import ProblemDetailsDTO
-from app.api.exceptions.problem_factory import ErrorCodes, problem_response
+from app.api.exceptions.problem_factory import ErrorCodes
 from app.api.schemas.user_dto import UserDTO, UserLoginDTO
 from app.config import config, token_key
 from app.core.errors.auth import InvalidEmailOrPasswordError, UnauthorizedError
@@ -116,46 +116,36 @@ async def auth_user(
 
     client_ip = request.client.host
 
-    try:
-        user, access_token, refresh_token = await auth_service.auth_existing_user(
-            identifier=data.identifier,
-            password=data.password,
-            client_ip=client_ip,
-        )
+    user, access_token, refresh_token = await auth_service.auth_existing_user(
+        identifier=data.identifier,
+        password=data.password,
+        client_ip=client_ip,
+    )
 
-        user_dto = UserDTO.fromrow(user.__dict__)
+    user_dto = UserDTO.fromrow(user.__dict__)
 
-        response = Response(user_dto)
+    response = Response(user_dto)
 
-        response.set_cookie(
-            key="access_token",
-            value=access_token,
-            httponly=True,
-            secure=True,
-            max_age=config.ACCESS_TOKEN_EXPIRE_TIME,
-            samesite="strict",
-            path="/",
-        )
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=True,
+        max_age=config.ACCESS_TOKEN_EXPIRE_TIME,
+        samesite="strict",
+        path="/",
+    )
 
-        response.set_cookie(
-            key="refresh_token",
-            value=refresh_token,
-            httponly=True,
-            secure=True,
-            max_age=config.REFRESH_TOKEN_EXPIRE_TIME,
-            samesite="strict",
-            path="/auth",
-        )
-        return response
-
-    except InvalidEmailOrPasswordError:
-        return problem_response(ErrorCodes.VALIDATION_ERROR, InvalidEmailOrPasswordError.message)
-
-    except TooManyRequestsError:
-        raise HTTPException(
-            status_code=HTTP_429_TOO_MANY_REQUESTS,
-            detail="Слишком много попыток авторизации. Попробуйте позже.",
-        ) from None
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+        max_age=config.REFRESH_TOKEN_EXPIRE_TIME,
+        samesite="strict",
+        path="/auth",
+    )
+    return response
 
 
 @post(
@@ -176,35 +166,20 @@ async def logout_user(request: Request, container: Container) -> Response:
 
     Удаляет PASETO из cookie и заносит refresh (и access) токены в blacklist.
     """
-    redis_repo: RedisBlacklistRepo = container.resolve(RedisBlacklistRepo)
-
-    async def _blacklist_token(token: str, expected_type: str, expires_in: int) -> None:
-        """Парсит токен и добавляет его jti в blacklist, если валиден."""
-        try:
-            parsed = paseto.parse(key=token_key, purpose="local", token=token)
-            claims = parsed["message"]
-
-            if claims.get("type") == expected_type:
-                jti = claims.get("jti")
-                if jti and redis_repo:
-                    await redis_repo.add_to_blacklist(jti, expires_in=expires_in)
-        except Exception:
-            raise HTTPException(
-                status_code=HTTP_400_BAD_REQUEST, detail="Невалидный токен"
-            ) from None
+    auth_service = container.resolve(AuthService)
 
     refresh_token = request.cookies.get("refresh_token")
     access_token = request.cookies.get("access_token")
 
     if refresh_token:
-        await _blacklist_token(
+        await auth_service._blacklist_token(
             token=refresh_token,
             expected_type="refresh",
             expires_in=config.REFRESH_TOKEN_EXPIRE_TIME,
         )
 
     if access_token:
-        await _blacklist_token(
+        await auth_service._blacklist_token(
             token=access_token,
             expected_type="access",
             expires_in=config.ACCESS_TOKEN_EXPIRE_TIME,
@@ -267,12 +242,6 @@ async def logout_user(request: Request, container: Container) -> Response:
 )
 async def get_me(current_user: UserDTO | None) -> UserDTO:
     """Эндпоинт возвращает данные текущего пользователя."""
-    if not current_user:
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail="Пользователь не авторизован или сессия истекла",
-        )
-
     return current_user
 
 
@@ -333,51 +302,34 @@ async def refresh_user(request: Request, container: Container) -> Response:
 
     refresh_token = request.cookies.get("refresh_token")
     access_token = request.cookies.get("access_token")
-    if not refresh_token:
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED, detail="Нет refresh токена"
-        )
 
-    try:
-        new_access, new_refresh = await auth_service.refresh_tokens(
-            refresh_token, access_token, client_ip
-        )
+    new_access, new_refresh = await auth_service.refresh_tokens(
+        refresh_token, access_token, client_ip
+    )
 
-        response = Response({"detail": "Token refreshed"})
+    response = Response({"detail": "Token refreshed"})
 
-        response.set_cookie(
-            key="access_token",
-            value=new_access,
-            httponly=True,
-            secure=True,
-            max_age=config.ACCESS_TOKEN_EXPIRE_TIME,
-            samesite="strict",
-            path="/",
-        )
+    response.set_cookie(
+        key="access_token",
+        value=new_access,
+        httponly=True,
+        secure=True,
+        max_age=config.ACCESS_TOKEN_EXPIRE_TIME,
+        samesite="strict",
+        path="/",
+    )
 
-        response.set_cookie(
-            key="refresh_token",
-            value=new_refresh,
-            httponly=True,
-            secure=True,
-            max_age=config.REFRESH_TOKEN_EXPIRE_TIME,
-            samesite="strict",
-            path="/auth",
-        )
+    response.set_cookie(
+        key="refresh_token",
+        value=new_refresh,
+        httponly=True,
+        secure=True,
+        max_age=config.REFRESH_TOKEN_EXPIRE_TIME,
+        samesite="strict",
+        path="/auth",
+    )
 
-        return response
-
-    except TooManyRequestsError:
-        raise HTTPException(
-            status_code=HTTP_429_TOO_MANY_REQUESTS,
-            detail="Слишком много попыток обновления токенов. Попробуйте позже.",
-        ) from None
-
-    except UnauthorizedError:
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail="Невалидный или просроченный refresh токен",
-        ) from None
+    return response
 
 
 auth_router = Router(

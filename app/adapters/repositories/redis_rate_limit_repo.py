@@ -41,8 +41,10 @@ class RedisRateLimitRepo:
 
         return current
 
-    async def is_allowed(self, key: str, action: str, limit: int, window: int) -> bool:
-        """Проверяет, разрешен ли запрос в рамках лимита.
+    async def is_allowed(
+        self, key: str, action: str, limit: int, window: int
+    ) -> tuple[bool, int | None]:
+        """Проверяет, разрешен ли запрос в рамках лимита и возвращает retry_after.
 
         Args:
             key (str): Ключ (ip или user_id).
@@ -51,7 +53,17 @@ class RedisRateLimitRepo:
             window (int): Время окна в секундах.
 
         Returns:
-            bool: True, если запрос разрешен, иначе False.
+            tuple[bool, int | None]: (Разрешён ли запрос, время до разблокировки в секундах)
         """
+        client = await self._gateway.get_connection()
+        redis_key = self._key(key, action)
+
         current = await self.increment(key, action, window)
-        return current <= limit
+
+        if current <= limit:
+            return True, None
+
+        ttl = await client.ttl(redis_key)
+        retry_after = int(ttl) if ttl and ttl > 0 else None
+
+        return False, retry_after

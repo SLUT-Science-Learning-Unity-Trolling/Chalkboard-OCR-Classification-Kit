@@ -90,7 +90,7 @@ class UserService:
             UserCreationError: Если произошла ошибка при создании пользователя.
         """
         if password != repeat_password:
-            raise PasswordDontMatchError
+            raise PasswordDontMatchError("Пароли не совпадают")
 
         self._validator.validate_password(password)
         self._validator.validate_username(username)
@@ -98,9 +98,9 @@ class UserService:
         existing_user = await self.does_user_exists(username, email)
         if existing_user:
             if existing_user.get("username") == username:
-                raise UsernameAlreadyTakenError
+                raise UsernameAlreadyTakenError("Имя пользователя уже занято")
             if existing_user.get("email") == email.lower():
-                raise EmailAlreadyTakenError
+                raise EmailAlreadyTakenError("Почта уже занята")
 
         self._validator.validate_email(email)
 

@@ -18,6 +18,7 @@ from app.core.errors.auth import (
     InvalidEmailOrPasswordError,
     UnauthorizedError,
 )
+from app.core.errors.security import InvalidTokenError
 from app.core.services.security_service import SecurityService
 from app.core.services.user_service import UserService
 from app.core.services.validation_service import ValidationService
@@ -147,7 +148,7 @@ class AuthService:
         """
         token = request.cookies.get("access_token")
         if not token:
-            return None
+            raise UnauthorizedError("Пользователь не авторизован или сессия истекла")
 
         try:
             parsed = paseto.parse(
@@ -159,18 +160,20 @@ class AuthService:
             claims = parsed["message"]
 
             if claims.get("type") != "access":
-                return None
+                raise InvalidTokenError("Неверный тип токена")
 
             user_id = claims["sub"]
+            if not user_id:
+                raise InvalidTokenError("В токене отсутствует идентификатор пользователя.")
 
         except Exception:
-            return None
+            raise InvalidTokenError("Невалидный токен")
 
         user_service = container.resolve(UserService)
         user = await user_service.get_user_by_id(user_id)
 
         if not user:
-            return None
+            raise UnauthorizedError("Пользователь не найден в базе данных.")
 
         return UserDTO.fromrow(user)
 
@@ -179,7 +182,7 @@ class AuthService:
     ) -> tuple[str, str]:
         """Перевыпуск access и refresh токена по валидному refresh_token."""
         if not refresh_token:
-            raise UnauthorizedError("Refresh token is required")
+            raise UnauthorizedError("Пользователь не авторизован")
 
         def _parse_paseto(token: str, expected_type: str) -> dict[str, str]:
             """Парсинг PASETO и проверка типа токена."""
@@ -187,17 +190,17 @@ class AuthService:
                 parsed = paseto.parse(key=token_key, purpose="local", token=token)
                 claims = parsed["message"]
             except Exception:
-                raise UnauthorizedError(f"Invalid {expected_type} token") from None
+                raise UnauthorizedError(f"Неизвестный {expected_type} токен") from None
 
             if claims.get("type") != expected_type:
                 raise UnauthorizedError(
-                    f"Token is not of type {expected_type}"
+                    f"Тип токена не соответствует {expected_type}"
                 ) from None
 
             jti = claims.get("jti")
             if not jti:
                 raise UnauthorizedError(
-                    f"{expected_type.capitalize()} token missing jti"
+                    f"{expected_type.capitalize()} в токене отсутствует jti"
                 ) from None
 
             return claims
@@ -208,7 +211,7 @@ class AuthService:
         if self._redis_blacklist and await self._redis_blacklist.is_blacklisted(
             refresh_jti
         ):
-            raise UnauthorizedError("Refresh token is blacklisted")
+            raise UnauthorizedError("Refresh токен в чёрном списке")
 
         user_id = claims_refresh["sub"]
 
@@ -220,7 +223,7 @@ class AuthService:
             if self._redis_blacklist and await self._redis_blacklist.is_blacklisted(
                 access_jti
             ):
-                raise UnauthorizedError("Access token is blacklisted")
+                raise UnauthorizedError("Access токен в чёрном списке")
 
         new_access = paseto.create(
             key=token_key,
@@ -254,3 +257,16 @@ class AuthService:
                 )
 
         return new_access, new_refresh
+
+    async def _blacklist_token(self, token: str, expected_type: str, expires_in: int) -> None:
+        """Парсит токен и добавляет его jti в blacklist, если валиден."""
+        try:
+            parsed = paseto.parse(key=token_key, purpose="local", token=token)
+            claims = parsed["message"]
+
+            if claims.get("type") == expected_type:
+                jti = claims.get("jti")
+                if jti and self._redis_blacklist:
+                    await self._redis_blacklist.add_to_blacklist(jti, expires_in=expires_in)
+        except Exception:
+            raise InvalidTokenError("Refresh токен не валиден")

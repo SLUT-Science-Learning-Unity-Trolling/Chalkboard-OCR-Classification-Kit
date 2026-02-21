@@ -24,7 +24,7 @@ from litestar.status_codes import (
 from punq import Container
 
 from app.api.exceptions.problem_details_dto import ProblemDetailsDTO
-from app.api.exceptions.problem_factory import ErrorCodes, problem_response
+from app.api.exceptions.problem_factory import ErrorCodes
 from app.api.schemas.image_dto import ImageDTO
 from app.api.schemas.user_dto import UserCreateDTO, UserDTO
 from app.core.domain.models.image import UploadedImage
@@ -89,28 +89,15 @@ async def create_user(
     """Запрос на создание нового пользователя."""
     user_service = container.resolve(UserService)
 
-    try:
-        user: User = await user_service.create_user(
-            username=data.username,
-            email=data.email,
-            password=data.password,
-            repeat_password=data.repeat_password,
-        )
-        return UserDTO.fromrow(user.__dict__)
+    user: User = await user_service.create_user(
+        username=data.username,
+        email=data.email,
+        password=data.password,
+        repeat_password=data.repeat_password,
+    )
 
-    except PasswordDontMatchError as exc:
-        return problem_response(ErrorCodes.VALIDATION_ERROR, exc.message)
-    except PasswordValidationError as exc:
-        return problem_response(ErrorCodes.VALIDATION_ERROR, exc.message)
-    except EmailValidationError as exc:
-        return problem_response(ErrorCodes.VALIDATION_ERROR, exc.message)
-    except UsernameValidationError as exc:
-        return problem_response(ErrorCodes.VALIDATION_ERROR, exc.message)
-    except EmailAlreadyTakenError as exc:
-        return problem_response(ErrorCodes.VALIDATION_ERROR, exc.message)
-    except UsernameAlreadyTakenError as exc:
-        return problem_response(ErrorCodes.VALIDATION_ERROR, exc.message)
-
+    user_dto = UserDTO.fromrow(user.__dict__)
+    return user_dto.__dict__
 
 @post(
     "/upload_image",
@@ -168,34 +155,15 @@ async def upload_image(
     """Запрос на загрузку изображения для текущего пользователя."""
     user_service = container.resolve(UserService)
 
-    if not current_user:
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail="Пользователь не авторизован или сессия истекла",
-        )
+    image: UploadedImage = await user_service.upload_image(
+        user_id=current_user.id, file=data
+    )
 
-    try:
-        image: UploadedImage = await user_service.upload_image(
-            user_id=current_user.id, file=data
-        )
+    image_dict = image.__dict__.copy()
+    if "_id" in image_dict and isinstance(image_dict["_id"], ObjectId):
+        image_dict["_id"] = str(image_dict["_id"])
 
-        image_dict = image.__dict__.copy()
-        if "_id" in image_dict and isinstance(image_dict["_id"], ObjectId):
-            image_dict["_id"] = str(image_dict["_id"])
-
-        return ImageDTO.fromrow(image_dict)
-
-    except ImageExtensionValidationError:
-        raise HTTPException(
-            status_code=HTTP_400_BAD_REQUEST,
-            detail="Недопустимое расширение файла. Разрешены только .jpg, .jpeg, .png",
-        ) from None
-
-    except ImageUploadError:
-        raise HTTPException(
-            status_code=HTTP_400_BAD_REQUEST,
-            detail="Ошибка загрузки изображения. Попробуйте еще раз.",
-        ) from None
+    return ImageDTO.fromrow(image_dict)
 
 
 @get(
@@ -252,12 +220,6 @@ async def get_all_user_images(
         HTTPException: Если пользователь не авторизован.
     """
     user_service = container.resolve(UserService)
-
-    if not current_user:
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail="Пользователь не авторизован или сессия истекла",
-        )
 
     images: list[UploadedImage] = await user_service.get_all_user_images(
         user_id=current_user.id
@@ -333,21 +295,8 @@ async def delete_image(
     """
     user_service = container.resolve(UserService)
 
-    if not current_user:
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail="Пользователь не авторизован или сессия истекла",
-        )
-
-    try:
-        await user_service.delete_image(user_id=current_user.id, url=url)
-        return {"detail": "Изображение удалено"}
-
-    except DeleteImageError:
-        raise HTTPException(
-            status_code=HTTP_400_BAD_REQUEST,
-            detail="Ошибка удаления изображения",
-        ) from None
+    await user_service.delete_image(user_id=current_user.id, url=url)
+    return {"detail": "Изображение удалено"}
 
 
 users_router = Router(

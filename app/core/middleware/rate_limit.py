@@ -1,14 +1,14 @@
 """Middleware для rate limiting."""
 
 from collections.abc import Callable
+from typing import Optional
 
 from litestar.connection import Request
-from litestar.exceptions import HTTPException
-from litestar.status_codes import HTTP_429_TOO_MANY_REQUESTS
 from litestar.types import ASGIApp, Receive, Scope, Send
 from punq import Container
 
 from app.adapters.repositories.redis_rate_limit_repo import RedisRateLimitRepo
+from app.core.errors.security import TooManyRequestsError
 
 
 def rate_limit_middleware(container: Container) -> Callable[[ASGIApp], ASGIApp]:
@@ -23,26 +23,41 @@ def rate_limit_middleware(container: Container) -> Callable[[ASGIApp], ASGIApp]:
                 await app(scope, receive, send)
                 return
 
-            request = Request(scope, receive)
+            try:
+                request = Request(scope, receive)
+            except Exception:
+                await app(scope, receive, send)
+                return
+
             redis_rate_limit: RedisRateLimitRepo = container.resolve(RedisRateLimitRepo)
 
-            client_ip = request.client.host
+            client_ip: str | None = None
+            client_ip = getattr(request.client, "host", None) if getattr(request, "client", None) else None
+            if not client_ip:
+                xff = request.headers.get("x-forwarded-for")
+                if xff:
+                    client_ip = xff.split(",")[0].strip()
+                else:
+                    client_ip = scope.get("client")[0] if scope.get("client") else "unknown"
 
-            if scope["path"].startswith("/auth/login"):
+            path = scope.get("path", "")
+            if path.startswith("/auth/login"):
                 limit, window, action = 15, 900, "login"
-            elif scope["path"].startswith("/auth/refresh"):
+            elif path.startswith("/auth/refresh"):
                 limit, window, action = 15, 900, "refresh"
             else:
                 limit, window, action = 120, 60, "general"
 
-            allowed = await redis_rate_limit.is_allowed(
-                client_ip, action, limit, window
-            )
-            if not allowed:
-                raise HTTPException(
-                    status_code=HTTP_429_TOO_MANY_REQUESTS,
-                    detail="Слишком много запросов, повторите позже.",
+            try:
+                allowed, retry_after = await redis_rate_limit.is_allowed(
+                    client_ip, action, limit, window
                 )
+            except Exception:
+                await app(scope, receive, send)
+                return
+
+            if not allowed:
+                raise TooManyRequestsError("Превышен лимит запросов", retry_after=retry_after)
 
             await app(scope, receive, send)
 

@@ -5,6 +5,7 @@ from litestar import Litestar
 from litestar.config.cors import CORSConfig
 from litestar.openapi import OpenAPIConfig
 
+from app.api.exceptions.handlers import EXCEPTION_HANDLERS
 from app.api.routers import api_routers
 from app.config import config
 from app.container import build_container
@@ -54,6 +55,7 @@ app = Litestar(
         rate_limit_middleware(container=container),
         api_monitor_middleware(container=container),
     ],
+    exception_handlers=EXCEPTION_HANDLERS,
 )
 
 if __name__ == "__main__":

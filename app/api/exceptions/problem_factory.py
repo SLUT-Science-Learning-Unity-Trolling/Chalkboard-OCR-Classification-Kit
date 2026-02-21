@@ -1,7 +1,6 @@
 """Фабрика для создания DTO с описанием ошибок."""
 
 from enum import Enum
-from starlette.responses import JSONResponse
 
 class ErrorCodes(Enum):
     """Коды ошибок."""
@@ -62,7 +61,3 @@ class ErrorCodes(Enum):
             "status": self.status,
             "detail": detail,
         }
-
-def problem_response(code: ErrorCodes, detail: str) -> JSONResponse:
-    """Унифицированный ответ ошибок в формате Problem Details."""
-    return JSONResponse(content=code.example(detail), status_code=code.status)

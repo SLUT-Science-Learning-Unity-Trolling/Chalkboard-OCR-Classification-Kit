@@ -56,9 +56,7 @@ class Config:
 
     # Пароль
     PASSWORD_MIN_LENGTH: Final[int] = 8
-    PASSWORD_SPEC_SYMBOLS: Final[frozenset[str]] = frozenset(
-        {"!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "?", "|", "/", "<", ">", "_", "-"}
-    )
+    PASSWORD_SPEC_SYMBOLS: Final[frozenset[str]] = {"!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "?", "|", "/", "<", ">", "_", "-"}
 
     # Изображения
     ALLOWED_IMAGE_EXTENSIONS: Final[tuple[str, ...]] = ("jpg", "jpeg", "png", "tif", "tiff")
