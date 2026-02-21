@@ -10,5 +10,5 @@ class ProblemDetailsDTO:
   type: str
   title: str
   status: int
-  details: str
+  detail: str
 

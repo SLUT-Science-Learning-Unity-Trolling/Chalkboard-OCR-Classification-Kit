@@ -1,7 +1,7 @@
 """Модуль содержит класс AuthService для аутентификации пользователей."""
 # AuthService
 
-import re
+
 import secrets
 
 import paseto
@@ -20,6 +20,7 @@ from app.core.errors.auth import (
 )
 from app.core.services.security_service import SecurityService
 from app.core.services.user_service import UserService
+from app.core.services.validation_service import ValidationService
 
 
 class AuthService:
@@ -32,6 +33,7 @@ class AuthService:
         self,
         repository: RepositoryInterface,
         security: SecurityService,
+        validation: ValidationService,
         redis_blacklist_repo: RedisBlacklistRepo,
         redis_rate_limit_repo: RedisRateLimitRepo,
     ) -> None:
@@ -40,14 +42,16 @@ class AuthService:
         Args:
             repository (RepositoryInterface): Репозиторий пользователей.
             security (SecurityService): Сервис для работы с хэшированием паролей.
+            validation (ValidationService): Сервис для валидации
             redis_blacklist_repo (RedisBlacklistRepo): Репозиторий для черного списка токенов.
             redis_rate_limit_repo (RedisRateLimitRepo): Репозиторий для хранения данных о rate limit.
         """
         self._repo = repository
         self._security = security
+        self._validation = validation
         self._redis_blacklist = redis_blacklist_repo
         self._redis_rate_limit = redis_rate_limit_repo
-        pass
+
 
     async def auth_existing_user(
         self, identifier: str, password: str, client_ip: str
@@ -68,10 +72,22 @@ class AuthService:
         Returns:
             tuple[UserDTO, str]: DTO пользователя и JWT-токен.
         """
-        if re.match(r"[^@]+@[^@]+\.[^@]+", identifier):
-            query = {"email": identifier.lower()}
+        is_email: bool = "@" in identifier
+
+        if is_email:
+            self._validation.validate_credentials(
+                identifier=identifier,
+                password=password,
+                is_email=True,
+            )
+            query: dict[str, str] = {"email": identifier}
         else:
-            query = {"username": identifier}
+            self._validation.validate_credentials(
+                identifier=identifier,
+                password=password,
+                is_email=False
+            )
+            query: dict[str, str] = {"username": identifier}
 
         user = await self._repo.get_one(query)
         if not user:
@@ -81,7 +97,7 @@ class AuthService:
         if not self._security.verify_hash(password=password, salt=salt, hash_=hash):
             raise InvalidEmailOrPasswordError
 
-        access_token = paseto.create(
+        access_token: str = paseto.create(
             key=token_key,
             purpose="local",
             claims={
@@ -94,7 +110,7 @@ class AuthService:
             exp_seconds=config.ACCESS_TOKEN_EXPIRE_TIME,
         )
 
-        refresh_token = paseto.create(
+        refresh_token: str = paseto.create(
             key=token_key,
             purpose="local",
             claims={
@@ -105,7 +121,7 @@ class AuthService:
             exp_seconds=config.REFRESH_TOKEN_EXPIRE_TIME,
         )
 
-        user_dto = UserDTO(
+        user_dto: UserDTO = UserDTO(
             id=str(user["_id"]),
             username=user["username"],
             email=user["email"],

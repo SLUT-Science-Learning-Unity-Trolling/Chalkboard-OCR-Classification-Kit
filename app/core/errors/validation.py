@@ -52,3 +52,15 @@ class ImageNotFoundError(Exception):
             message (str | Exception, optional): Сообщение об ошибке".
         """
         self.message: str | Exception = message
+
+class IdentificatorIsNullError(Exception):
+    """Исключение, возникающее если email и username пустые."""
+
+    def __init__(self, message: str | Exception = "Имя пользователя или почта не должны быть пустыми") -> None:
+        """Конструктор.
+
+        Args:
+            message (str | Exception, optional): Сообщение об ошибке".
+        """
+        self.message: str | Exception = message
+

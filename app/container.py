@@ -1,6 +1,9 @@
 """Контейнер зависимостей."""
 # Container
 
+
+from typing import Any
+
 from punq import Container
 
 from app.adapters.gateways.mongo import MongoGateway
@@ -23,72 +26,42 @@ def build_container() -> Container:
     """Регистрация зависимостей в контейнере."""
     container = Container()
 
-    """Mongo и child репозитории"""
-    # MongoGateway
-    container.register(MongoGateway, factory=lambda: MongoGateway())
+    def register_gateway_singleton(typ: type, factory: Any) -> None:
+        """Функция для генерации одноэкземпляровых контейнеров."""
+        container.register(typ, factory=factory, scope="singleton")
 
-    """Redis и child репозитории"""
+    register_gateway_singleton(MongoGateway, factory=lambda: MongoGateway())
 
-    class RedisBlacklistGateway(RedisGateway):
-        pass
+    register_gateway_singleton(MinioGateway, factory=lambda: MinioGateway())
 
-    class RedisRateLimitGateway(RedisGateway):
-        pass
+    def register_redis_pair(db_index: int, gateway_name_suffix: str, repo_cls: Any) -> None:
+        """Регистрация 2 типов контейнеров редиса. Rate limit и Blacklist."""
+        gateway_type = type(f"RedisGatewayDb{db_index}_{gateway_name_suffix}", (RedisGateway,), {})
+        register_gateway_singleton(gateway_type, factory=lambda db=db_index: RedisGateway(db=db))
+        container.register(
+            repo_cls,
+            factory=lambda gw_type=gateway_type: repo_cls(gateway=container.resolve(gw_type))
+        )
 
-    container.register(
-        RedisBlacklistGateway, factory=lambda: RedisBlacklistGateway(db=0)
-    )
-    container.register(
-        RedisBlacklistRepo,
-        factory=lambda: RedisBlacklistRepo(
-            gateway=container.resolve(RedisBlacklistGateway)
-        ),
-    )
+    register_redis_pair(0, "blacklist", RedisBlacklistRepo)
+    register_redis_pair(1, "ratelimit", RedisRateLimitRepo)
 
-    container.register(
-        RedisRateLimitGateway,
-        factory=lambda: RedisRateLimitGateway(db=1),
-    )
-    container.register(
-        RedisRateLimitRepo,
-        factory=lambda: RedisRateLimitRepo(
-            gateway=container.resolve(RedisRateLimitGateway)
-        ),
-    )
+    def register_mongo_repo(interface: Any, collection_name: str) -> None:
+        """Фабрика для регистрации монго контейнеров."""
+        container.register(
+            interface,
+            factory=lambda coll=collection_name: MongoRepo(
+                gateway=container.resolve(MongoGateway),
+                collection_name=coll,
+            ),
+        )
 
-    # UserRepo
-    container.register(
-        UserRepo,
-        factory=lambda: MongoRepo(
-            gateway=container.resolve(MongoGateway),
-            collection_name="users",
-        ),
-    )
+    register_mongo_repo(UserRepo, "users")
+    register_mongo_repo(ImageRepo, "images")
 
-    # ImageRepo
-    container.register(
-        ImageRepo,
-        factory=lambda: MongoRepo(
-            gateway=container.resolve(MongoGateway),
-            collection_name="images",
-        ),
-    )
+    container.register(SecurityService, factory=lambda: SecurityService(), scope="singleton")
+    container.register(ValidationService, factory=lambda: ValidationService(), scope="singleton")
 
-    """Регистрация MiniO гейтвея"""
-    # MinioGateway
-    container.register(
-        MinioGateway,
-        factory=lambda: MinioGateway(),
-    )
-
-    """Регистрация сервисов"""
-    # Security
-    container.register(SecurityService, factory=lambda: SecurityService())
-
-    # Validation
-    container.register(ValidationService, factory=lambda: ValidationService())
-
-    # User
     container.register(
         UserService,
         factory=lambda: UserService(
@@ -100,22 +73,19 @@ def build_container() -> Container:
         ),
     )
 
-    # Auth
     container.register(
         AuthService,
         factory=lambda: AuthService(
             repository=container.resolve(UserRepo),
             security=container.resolve(SecurityService),
+            validation=container.resolve(ValidationService),
             redis_blacklist_repo=container.resolve(RedisBlacklistRepo),
             redis_rate_limit_repo=container.resolve(RedisRateLimitRepo),
         ),
     )
 
-    """Регистрация конфига"""
-    # Config
     container.register("config", instance=Config())
 
-    # AppMonitor
     container.register(ApiMonitor, ApiMonitor, scope="singleton")
 
     return container

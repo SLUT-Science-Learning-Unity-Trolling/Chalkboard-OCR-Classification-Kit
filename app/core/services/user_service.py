@@ -16,7 +16,6 @@ from app.core.domain.models.image import UploadedImage
 from app.core.domain.models.user import User
 from app.core.errors.auth import (
     EmailAlreadyTakenError,
-    EmailValidationError,
     PasswordDontMatchError,
     UsernameAlreadyTakenError,
 )
@@ -30,8 +29,6 @@ from app.core.errors.user import (
 from app.core.errors.validation import (
     ImageExtensionValidationError,
     ImageNotFoundError,
-    PasswordValidationError,
-    UsernameValidationError,
 )
 from app.core.services.security_service import SecurityService
 from app.core.services.validation_service import ValidationService
@@ -92,11 +89,8 @@ class UserService:
         if password != repeat_password:
             raise PasswordDontMatchError
 
-        if not await self._validator.validate_password(password):
-            raise PasswordValidationError
-
-        if not await self._validator.validate_username(username):
-            raise UsernameValidationError
+        self._validator.validate_password(password)
+        self._validator.validate_username(username)
 
         existing_user = await self.does_user_exists(username, email)
         if existing_user:
@@ -105,10 +99,7 @@ class UserService:
             if existing_user.get("email") == email.lower():
                 raise EmailAlreadyTakenError
 
-        try:
-            await self._validator.validate_email(email)
-        except EmailValidationError:
-            raise EmailValidationError("Введите корректный email") from None
+        self._validator.validate_email(email)
 
         salt, _hash = self._security.hash_password(password)
         password_hash = self._security.serialize_hash(salt, _hash)
