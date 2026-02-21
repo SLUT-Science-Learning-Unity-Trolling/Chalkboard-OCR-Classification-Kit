@@ -11,6 +11,7 @@ class PasswordDontMatchError(Exception):
         Args:
             message (str | Exception, optional): Сообщение об ошибке".
         """
+        super().__init__(message)
         self.message: str | Exception = message
 
 
@@ -23,6 +24,7 @@ class EmailValidationError(Exception):
         Args:
             message (str | Exception, optional): Сообщение об ошибке".
         """
+        super().__init__(message)
         self.message: str | Exception = message
 
 
@@ -35,6 +37,7 @@ class EmailAlreadyTakenError(Exception):
         Args:
             message (str | Exception, optional): Сообщение об ошибке".
         """
+        super().__init__(message)
         self.message: str | Exception = message
 
 
@@ -49,6 +52,7 @@ class UsernameAlreadyTakenError(Exception):
         Args:
             message (str | Exception, optional): Сообщение об ошибке".
         """
+        super().__init__(message)
         self.message: str | Exception = message
 
 
@@ -61,6 +65,7 @@ class InvalidEmailOrPasswordError(Exception):
         Args:
             message (str | Exception, optional): Сообщение об ошибке".
         """
+        super().__init__(message)
         self.message: str | Exception = message
 
 class UnauthorizedError(Exception):
@@ -72,5 +77,6 @@ class UnauthorizedError(Exception):
         Args:
             message (str | Exception, optional): Сообщение об ошибке".
         """
+        super().__init__(message)
         self.message: str | Exception = message
 

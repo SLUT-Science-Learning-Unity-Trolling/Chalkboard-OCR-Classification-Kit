@@ -24,7 +24,7 @@ from litestar.status_codes import (
 from punq import Container
 
 from app.api.exceptions.problem_details_dto import ProblemDetailsDTO
-from app.api.exceptions.problem_factory import ErrorCodes
+from app.api.exceptions.problem_factory import ErrorCodes, problem_response
 from app.api.schemas.image_dto import ImageDTO
 from app.api.schemas.user_dto import UserCreateDTO, UserDTO
 from app.core.domain.models.image import UploadedImage
@@ -98,41 +98,18 @@ async def create_user(
         )
         return UserDTO.fromrow(user.__dict__)
 
-    except PasswordDontMatchError:
-        raise HTTPException(
-            status_code=HTTP_400_BAD_REQUEST,
-            detail="Пароли не совпадают",
-        ) from None
-
-    except PasswordValidationError:
-        raise HTTPException(
-            status_code=HTTP_400_BAD_REQUEST,
-            detail="Пароль не соответствует требованиям безопасности",
-        ) from None
-
-    except EmailValidationError:
-        raise HTTPException(
-            status_code=HTTP_400_BAD_REQUEST,
-            detail="Введите корректный email",
-        ) from None
-
-    except UsernameValidationError:
-        raise HTTPException(
-            status_code=HTTP_400_BAD_REQUEST,
-            detail="Логин должен быть от 3 до 20 символов и содержать только буквы, цифры и подчеркивания",
-        ) from None
-
-    except EmailAlreadyTakenError:
-        raise HTTPException(
-            status_code=HTTP_400_BAD_REQUEST,
-            detail="Email уже зарегистрирован",
-        ) from None
-
-    except UsernameAlreadyTakenError:
-        raise HTTPException(
-            status_code=HTTP_400_BAD_REQUEST,
-            detail="Данный логин уже зарегистрирован",
-        ) from None
+    except PasswordDontMatchError as exc:
+        return problem_response(ErrorCodes.VALIDATION_ERROR, exc.message)
+    except PasswordValidationError as exc:
+        return problem_response(ErrorCodes.VALIDATION_ERROR, exc.message)
+    except EmailValidationError as exc:
+        return problem_response(ErrorCodes.VALIDATION_ERROR, exc.message)
+    except UsernameValidationError as exc:
+        return problem_response(ErrorCodes.VALIDATION_ERROR, exc.message)
+    except EmailAlreadyTakenError as exc:
+        return problem_response(ErrorCodes.VALIDATION_ERROR, exc.message)
+    except UsernameAlreadyTakenError as exc:
+        return problem_response(ErrorCodes.VALIDATION_ERROR, exc.message)
 
 
 @post(

@@ -20,7 +20,7 @@ from punq import Container
 
 from app.adapters.repositories.redis_blacklist_repo import RedisBlacklistRepo
 from app.api.exceptions.problem_details_dto import ProblemDetailsDTO
-from app.api.exceptions.problem_factory import ErrorCodes
+from app.api.exceptions.problem_factory import ErrorCodes, problem_response
 from app.api.schemas.user_dto import UserDTO, UserLoginDTO
 from app.config import config, token_key
 from app.core.errors.auth import InvalidEmailOrPasswordError, UnauthorizedError
@@ -149,9 +149,7 @@ async def auth_user(
         return response
 
     except InvalidEmailOrPasswordError:
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED, detail="Неверная почта/логин или пароль"
-        ) from None
+        return problem_response(ErrorCodes.VALIDATION_ERROR, InvalidEmailOrPasswordError.message)
 
     except TooManyRequestsError:
         raise HTTPException(

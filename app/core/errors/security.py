@@ -11,4 +11,5 @@ class TooManyRequestsError(Exception):
         Args:
             message (str | Exception, optional): Сообщение об ошибке".
         """
+        super().__init__(message)
         self.message: str | Exception = message

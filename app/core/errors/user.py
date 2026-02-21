@@ -11,6 +11,7 @@ class UserCreationError(Exception):
         Args:
             message (str | Exception): Сообщение об ошибке.
         """
+        super().__init__(message)
         self.message: str | Exception = message
 
 
@@ -23,6 +24,7 @@ class ImageUploadError(Exception):
         Args:
             message (str | Exception): Сообщение об ошибке.
         """
+        super().__init__(message)
         self.message: str | Exception = message
 
 
@@ -35,6 +37,7 @@ class AbsentUserError(Exception):
         Args:
             message (str | Exception): Сообщение об ошибке.
         """
+        super().__init__(message)
         self.message: str | Exception = message
 
 
@@ -47,6 +50,7 @@ class GetImagesError(Exception):
         Args:
             message (str | Exception): Сообщение об ошибке.
         """
+        super().__init__(message)
         self.message: str | Exception = message
 
 
@@ -59,4 +63,5 @@ class DeleteImageError(Exception):
         Args:
             message (str | Exception): Сообщение об ошибке.
         """
+        super().__init__(message)
         self.message: str | Exception = message

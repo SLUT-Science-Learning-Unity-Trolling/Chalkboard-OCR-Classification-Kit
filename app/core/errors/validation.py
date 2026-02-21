@@ -11,6 +11,7 @@ class PasswordValidationError(Exception):
         Args:
             message (str | Exception, optional): Сообщение об ошибке".
         """
+        super().__init__(message)
         self.message: str | Exception = message
 
 
@@ -23,6 +24,7 @@ class UsernameValidationError(Exception):
         Args:
             message (str | Exception, optional): Сообщение об ошибке".
         """
+        super().__init__(message)
         self.message: str | Exception = message
 
 
@@ -39,6 +41,7 @@ class ImageExtensionValidationError(Exception):
         Args:
             message (str | Exception, optional): Сообщение об ошибке".
         """
+        super().__init__(message)
         self.message: str | Exception = message
 
 
@@ -51,6 +54,7 @@ class ImageNotFoundError(Exception):
         Args:
             message (str | Exception, optional): Сообщение об ошибке".
         """
+        super().__init__(message)
         self.message: str | Exception = message
 
 class IdentificatorIsNullError(Exception):
@@ -62,5 +66,6 @@ class IdentificatorIsNullError(Exception):
         Args:
             message (str | Exception, optional): Сообщение об ошибке".
         """
+        super().__init__(message)
         self.message: str | Exception = message
 

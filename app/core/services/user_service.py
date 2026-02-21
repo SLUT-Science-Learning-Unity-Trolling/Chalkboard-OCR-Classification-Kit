@@ -16,6 +16,7 @@ from app.core.domain.models.image import UploadedImage
 from app.core.domain.models.user import User
 from app.core.errors.auth import (
     EmailAlreadyTakenError,
+    EmailValidationError,
     PasswordDontMatchError,
     UsernameAlreadyTakenError,
 )
@@ -29,6 +30,8 @@ from app.core.errors.user import (
 from app.core.errors.validation import (
     ImageExtensionValidationError,
     ImageNotFoundError,
+    PasswordValidationError,
+    UsernameValidationError,
 )
 from app.core.services.security_service import SecurityService
 from app.core.services.validation_service import ValidationService
