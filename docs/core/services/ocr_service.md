@@ -1,9 +1,16 @@
+# Модуль ocr_service
+
+Модуль OCR.
+
 ## Класс OcrBox
 
+**Результат распознавания одного блока текста/формулы.**
 ## def build_p2t_formula:
+#### Pix2Text для формул. Отключаем лишние фичи, чтобы чуть быстрее работало и не ломалось на странных фото.
 
 ```python
-def build_p2t_formula(device: str = "cpu") -> Pix2Text:
+def build_p2t_formula(device: str = "gpu") -> Pix2Text:
+    """Pix2Text для формул. Отключаем лишние фичи, чтобы чуть быстрее работало и не ломалось на странных фото."""
     total_configs = {"text_formula": {"languages": ("ru", "en")}}
     return Pix2Text.from_config(
         total_configs=total_configs,
@@ -14,9 +21,11 @@ def build_p2t_formula(device: str = "cpu") -> Pix2Text:
 ```
 ---
 ## def build_paddle_ru:
+#### PaddleOCR для русского текста. Отключаем лишние фичи, чтобы чуть быстрее работало и не ломалось на странных фото.
 
 ```python
-def build_paddle_ru(device: str = "cpu") -> PaddleOCR:
+def build_paddle_ru(device: str = "gpu") -> PaddleOCR:
+    """PaddleOCR для русского текста. Отключаем лишние фичи, чтобы чуть быстрее работало и не ломалось на странных фото."""
     return PaddleOCR(
         lang="ru",
         device=device,
@@ -63,30 +72,31 @@ def _four_point_transform(image_bgr: np.ndarray, pts: np.ndarray) -> np.ndarray:
     rect = _order_points(pts.astype("float32"))
     (tl, tr, br, bl) = rect
 
-    widthA = np.linalg.norm(br - bl)
-    widthB = np.linalg.norm(tr - tl)
-    maxW = int(max(widthA, widthB))
+    width_a = np.linalg.norm(br - bl)
+    width_b = np.linalg.norm(tr - tl)
+    max_w = int(max(width_a, width_b))
 
-    heightA = np.linalg.norm(tr - br)
-    heightB = np.linalg.norm(tl - bl)
-    maxH = int(max(heightA, heightB))
+    height_a = np.linalg.norm(tr - br)
+    height_b = np.linalg.norm(tl - bl)
+    max_h = int(max(height_a, height_b))
 
-    maxW = max(maxW, 2)
-    maxH = max(maxH, 2)
+    max_w = max(max_w, 2)
+    max_h = max(max_h, 2)
 
     dst = np.array(
-        [[0, 0], [maxW - 1, 0], [maxW - 1, maxH - 1], [0, maxH - 1]], dtype="float32"
+        [[0, 0], [max_w - 1, 0], [max_w - 1, max_h - 1], [0, max_h - 1]],
+        dtype="float32",
     )
-    M = cv2.getPerspectiveTransform(rect, dst)
-    return cv2.warpPerspective(image_bgr, M, (maxW, maxH))
+    matrix = cv2.getPerspectiveTransform(rect, dst)
+    return cv2.warpPerspective(image_bgr, matrix, (max_w, max_h))
 ```
 ---
 ## def _find_largest_quad:
 
 ```python
 def _find_largest_quad(
-    image_bgr: np.ndarray, detect_width: int = 1200
-) -> Optional[np.ndarray]:
+    image_bgr: np.ndarray, detect_width: int = 2400
+) -> np.ndarray | None:
     h, w = image_bgr.shape[:2]
     if w > detect_width:
         r = detect_width / float(w)
@@ -124,23 +134,35 @@ def _find_largest_quad(
 ```
 ---
 ## def _enhance_for_ocr:
+#### Возвращает PIL-изображение, готовое для распознавания.
+По умолчанию — CLAHE + мягкое шумоподавление + upscale (до распознавания).
+Если force_binary=True — вернёт бинаризованную версию (использовать только для детекции/специфичных задач).
 
 ```python
-def _enhance_for_ocr(warped_bgr: np.ndarray, upscale: int = 2) -> Image.Image:
+def _enhance_for_ocr(
+    warped_bgr: np.ndarray, upscale: int = 3, force_binary: bool = False
+) -> Image.Image:
+    """Возвращает PIL-изображение, готовое для распознавания.
+
+    По умолчанию — CLAHE + мягкое шумоподавление + upscale (до распознавания).
+    Если force_binary=True — вернёт бинаризованную версию (использовать только для детекции/специфичных задач).
+    """
     h_before, w_before = warped_bgr.shape[:2]
     logger.info(f"_enhance_for_ocr input: {w_before}x{h_before}")
 
+    # 1) Мягкое шумоподавление (сохраняем градиенты)
     den = cv2.bilateralFilter(warped_bgr, d=9, sigmaColor=75, sigmaSpace=75)
 
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
-    den = cv2.morphologyEx(den, cv2.MORPH_CLOSE, kernel, iterations=1)
-
+    # 2) CLAHE на L-канале — усиливаем контраст локально, не ломая тонов
     lab = cv2.cvtColor(den, cv2.COLOR_BGR2LAB)
-    l, a, b = cv2.split(lab)
-    clahe = cv2.createCLAHE(clipLimit=3.5, tileGridSize=(10, 10))
-    l2 = clahe.apply(l)
-    out = cv2.cvtColor(cv2.merge([l2, a, b]), cv2.COLOR_LAB2BGR)
+    l_channel, a, b = cv2.split(lab)
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    l2 = clahe.apply(l_channel)
+    merged = cv2.cvtColor(cv2.merge([l2, a, b]), cv2.COLOR_LAB2BGR)
 
+    out = merged
+
+    # 3) upscale перед разрезанием/резкостью — лучше до интерполяции
     if upscale and upscale > 1:
         out = cv2.resize(
             out,
@@ -149,25 +171,41 @@ def _enhance_for_ocr(warped_bgr: np.ndarray, upscale: int = 2) -> Image.Image:
         )
         logger.info(f"After upscale {upscale}x: {out.shape[1]}x{out.shape[0]}")
 
+    if force_binary:
+        gray = cv2.cvtColor(out, cv2.COLOR_BGR2GRAY)
+        gray = cv2.normalize(gray, None, 0, 255, cv2.NORM_MINMAX)
+        bin_img = cv2.adaptiveThreshold(
+            gray,
+            255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY,
+            31,
+            10,
+        )
+        out = cv2.cvtColor(bin_img, cv2.COLOR_GRAY2BGR)
+
     pil = _bgr_to_pil(out)
-    pil = ImageEnhance.Contrast(pil).enhance(1.5)
-    pil = pil.filter(ImageFilter.UnsharpMask(radius=3, percent=200, threshold=2))
-    pil = ImageEnhance.Brightness(pil).enhance(1.05)
+
+    # лёгкая резкость/контраст на PIL
+    pil = ImageEnhance.Contrast(pil).enhance(1.15)
+    pil = ImageEnhance.Brightness(pil).enhance(1.02)
 
     logger.info(f"Final PIL size: {pil.size}")
     return pil
 ```
 ---
 ## def preprocess_screen_photo:
+#### Пытается найти и выровнять доску на фото, а если не получается — возвращает слегка улучшенную версию исходного изображения.
 
 ```python
 def preprocess_screen_photo(
     img_pil: Image.Image,
-    detect_width: int = 1200,
-    upscale: int = 2,
+    detect_width: int = 2400,
+    upscale: int = 3,
     fallback_crop: bool = True,
     skip_warp: bool = False,
 ) -> Image.Image:
+    """Пытается найти и выровнять доску на фото, а если не получается — возвращает слегка улучшенную версию исходного изображения."""
     logger.info(f"preprocess_screen_photo input: {img_pil.size}")
 
     img_pil = ImageOps.exif_transpose(img_pil).convert("RGB")
@@ -176,9 +214,8 @@ def preprocess_screen_photo(
     bgr = _pil_to_bgr(img_pil)
 
     w, h = img_pil.size
-    aspect = w / h if h > 0 else 1.0
-    if skip_warp or (0.8 < aspect < 1.25):
-        logger.info(f"Skipping warp: aspect ratio {aspect:.2f}")
+    if skip_warp:
+        logger.info("Skipping warp by flag")
         if fallback_crop:
             m = int(min(w, h) * 0.05)
             img_pil = img_pil.crop((m, m, w - m, h - m))
@@ -202,11 +239,13 @@ def preprocess_screen_photo(
 ```
 ---
 ## def restore_paragraphs:
+#### Пытается восстановить абзацы в распознанном тексте по простым эвристикам.
 
 ```python
 def restore_paragraphs(text: str) -> str:
+    """Пытается восстановить абзацы в распознанном тексте по простым эвристикам."""
     lines = text.split("\n")
-    result: List[str] = []
+    result: list[str] = []
 
     for i, line in enumerate(lines):
         result.append(line)
@@ -225,7 +264,7 @@ def restore_paragraphs(text: str) -> str:
 ## def _box_stats:
 
 ```python
-def _box_stats(box: np.ndarray) -> Tuple[float, float, float, float, float, float]:
+def _box_stats(box: np.ndarray) -> tuple[float, float, float, float, float, float]:
     xs = box[:, 0]
     ys = box[:, 1]
     x_min, x_max = float(xs.min()), float(xs.max())
@@ -238,7 +277,7 @@ def _box_stats(box: np.ndarray) -> Tuple[float, float, float, float, float, floa
 ## def _estimate_line_height:
 
 ```python
-def _estimate_line_height(items: List[OcrBox]) -> float:
+def _estimate_line_height(items: list[OcrBox]) -> float:
     hs = []
     for it in items:
         _, y_min, _, y_max, _, _ = _box_stats(it.box)
@@ -249,13 +288,13 @@ def _estimate_line_height(items: List[OcrBox]) -> float:
 ## def _group_into_lines:
 
 ```python
-def _group_into_lines(items: List[OcrBox], line_height: float) -> List[List[OcrBox]]:
+def _group_into_lines(items: list[OcrBox], line_height: float) -> list[list[OcrBox]]:
     items_sorted = sorted(
         items, key=lambda it: (_box_stats(it.box)[5], _box_stats(it.box)[4])
     )
-    lines: List[List[OcrBox]] = []
-    cur: List[OcrBox] = []
-    cur_y: Optional[float] = None
+    lines: list[list[OcrBox]] = []
+    cur: list[OcrBox] = []
+    cur_y: float | None = None
 
     thresh = max(8.0, 0.6 * line_height)
 
@@ -285,7 +324,7 @@ def _group_into_lines(items: List[OcrBox], line_height: float) -> List[List[OcrB
 ## def _boxes_to_markdown:
 
 ```python
-def _boxes_to_markdown(items: List[OcrBox], math_delims: MathDelims = "dollars") -> str:
+def _boxes_to_markdown(items: list[OcrBox], math_delims: MathDelims = "dollars") -> str:
     if math_delims == "dollars":
         isolated_sep = ("$$\n", "\n$$")
         embed_sep = (" $", "$ ")
@@ -296,10 +335,10 @@ def _boxes_to_markdown(items: List[OcrBox], math_delims: MathDelims = "dollars")
     line_h = _estimate_line_height(items)
     lines = _group_into_lines(items, line_height=line_h)
 
-    out_lines: List[str] = []
+    out_lines: list[str] = []
 
     for ln in lines:
-        buf: List[str] = []
+        buf: list[str] = []
         for it in ln:
             txt = (it.text or "").strip()
             if not txt:
@@ -329,7 +368,7 @@ def _pix2text_detect_and_recognize_formulas(
     img_pil: Image.Image,
     resized_shape: int = 2048,
     mfr_batch_size: int = 1,
-) -> List[OcrBox]:
+) -> list[OcrBox]:
     tfo = p2t.text_formula_ocr
     if tfo is None or tfo.mfd is None or tfo.latex_ocr is None:
         raise RuntimeError("Pix2Text text_formula_ocr/mfd/latex_ocr is not available")
@@ -337,13 +376,13 @@ def _pix2text_detect_and_recognize_formulas(
     img0 = img_pil.convert("RGB")
     w, h = img0.size
 
-    ratio = resized_shape / float(max(1, w))
-    resized_hw = (max(1, int(h * ratio)), resized_shape)
+    analyzer_outs = tfo.mfd(
+        img0.copy(),
+        resized_shape=resized_shape,
+    )
 
-    analyzer_outs = tfo.mfd(img0.copy(), resized_shape=resized_hw)
-
-    patches: List[Image.Image] = []
-    meta: List[dict] = []
+    patches: list[Image.Image] = []
+    meta: list[dict] = []
     for mf in analyzer_outs:
         box = np.array(mf["box"], dtype=np.float32)
         x_min, y_min, x_max, y_max, *_ = _box_stats(box)
@@ -361,8 +400,8 @@ def _pix2text_detect_and_recognize_formulas(
 
     recs = tfo.latex_ocr.recognize(patches, batch_size=mfr_batch_size)
 
-    outs: List[OcrBox] = []
-    for m, r in zip(meta, recs):
+    outs: list[OcrBox] = []
+    for m, r in zip(meta, recs, strict=False):
         txt = (r.get("text") or "").strip()
         if not txt:
             continue
@@ -380,7 +419,7 @@ def _pix2text_detect_and_recognize_formulas(
 ## def _mask_polys_white:
 
 ```python
-def _mask_polys_white(bgr: np.ndarray, polys: List[np.ndarray]) -> np.ndarray:
+def _mask_polys_white(bgr: np.ndarray, polys: list[np.ndarray]) -> np.ndarray:
     if not polys:
         return bgr
 
@@ -399,8 +438,8 @@ def _mask_polys_white(bgr: np.ndarray, polys: List[np.ndarray]) -> np.ndarray:
 ## def _paddle_text_boxes:
 
 ```python
-def _paddle_text_boxes(paddle: PaddleOCR, img_bgr: np.ndarray) -> List[OcrBox]:
-    outs: List[OcrBox] = []
+def _paddle_text_boxes(paddle: PaddleOCR, img_bgr: np.ndarray) -> list[OcrBox]:
+    outs: list[OcrBox] = []
 
     if hasattr(paddle, "predict"):
         results = paddle.predict(img_bgr)
@@ -424,7 +463,7 @@ def _paddle_text_boxes(paddle: PaddleOCR, img_bgr: np.ndarray) -> List[OcrBox]:
                 txt = str(rec_texts[i] or "").strip()
                 if not txt:
                     continue
-                box = np.array(rec_polys[i], dtype=np.float32)  # (4,2) [page:5]
+                box = np.array(rec_polys[i], dtype=np.float32)
                 outs.append(
                     OcrBox(
                         type="text",
@@ -467,18 +506,67 @@ def _paddle_text_boxes(paddle: PaddleOCR, img_bgr: np.ndarray) -> List[OcrBox]:
     return outs
 ```
 ---
+## def unwrap_plain_text_math:
+#### Превращает формулы обратно в обычный текст.
+
+```python
+def unwrap_plain_text_math(md: str) -> str:
+    """Превращает формулы обратно в обычный текст."""
+    lines = md.splitlines()
+    out: list[str] = []
+
+    for line in lines:
+        s = line.strip()
+        if s.startswith("$$") and s.endswith("$$"):
+            body = s[2:-2].strip()
+            m = _SIMPLE_TEXT_IN_MATH_RE.match(body)
+            if m:
+                txt = m.group(1).replace("~", " ")
+                out.append(txt)
+                continue
+        out.append(line)
+
+    return "\n".join(out)
+```
+---
+## def replace_lat_to_cyr_outside_math:
+#### Заменяет латиницу на кириллицу ТОЛЬКО вне LaTeX-математики.
+$$...$$, \[...\], \( ... \) не трогаются.
+
+```python
+def replace_lat_to_cyr_outside_math(text: str) -> str:
+    r"""Заменяет латиницу на кириллицу ТОЛЬКО вне LaTeX-математики.
+
+    $$...$$, \[...\], \( ... \) не трогаются.
+    """
+    parts = _MATH_BLOCK_RE.split(text)
+    out: list[str] = []
+
+    for part in parts:
+        if not part:
+            continue
+        if _MATH_BLOCK_RE.fullmatch(part):
+            out.append(part)
+        else:
+            out.append(part.translate(_LAT2CYR))
+
+    return "".join(out)
+```
+---
 ## def image_bytes_to_markdown:
+#### Преобразует изображение в Markdown с помощью Pix2Text (формулы) и PaddleOCR (русский текст).
 
 ```python
 def image_bytes_to_markdown(
     image_bytes: bytes,
-    p2t: Optional[Pix2Text] = None,
-    paddle: Optional[PaddleOCR] = None,
+    p2t: Pix2Text | None = None,
+    paddle: PaddleOCR | None = None,
     resized_shape: int = 2048,
     contain_formula: bool = True,
     math_delims: MathDelims = "dollars",
     skip_warp: bool = False,
 ) -> str:
+    """Преобразует изображение в Markdown с помощью Pix2Text (формулы) и PaddleOCR (русский текст)."""
     p2t = p2t or build_p2t_formula(device="cpu")
     paddle = paddle or build_paddle_ru(device="cpu")
 
@@ -487,15 +575,14 @@ def image_bytes_to_markdown(
 
     img = preprocess_screen_photo(
         img0,
-        detect_width=1200,
-        upscale=2,
+        detect_width=2400,
+        upscale=3,
         fallback_crop=True,
         skip_warp=skip_warp,
     )
     logger.info(f"After preprocess: {img.size}")
 
-    # 1) Формулы (Pix2Text)
-    formula_boxes: List[OcrBox] = []
+    formula_boxes: list[OcrBox] = []
     if contain_formula:
         formula_boxes = _pix2text_detect_and_recognize_formulas(
             p2t=p2t,
@@ -504,13 +591,13 @@ def image_bytes_to_markdown(
             mfr_batch_size=1,
         )
 
-    # 2) Текст (PaddleOCR) на изображении с замаскированными формулами
     bgr = _pil_to_bgr(img)
     bgr_masked = _mask_polys_white(bgr, [fb.box for fb in formula_boxes])
     text_boxes = _paddle_text_boxes(paddle, bgr_masked)
 
-    # 3) Merge -> Markdown
     md = _boxes_to_markdown(text_boxes + formula_boxes, math_delims=math_delims)
+    md = replace_lat_to_cyr_outside_math(md)
+    md = unwrap_plain_text_math(md)
     logger.info(f"OCR result length: {len(md.strip())}")
     return md.strip() or "(OCR вернул пустой результат)"
 ```
@@ -524,6 +611,7 @@ def _ensure_nonempty_markdown(md: str) -> str:
 ```
 ---
 ## def markdown_to_pdf_bytes:
+#### Преобразует Markdown в PDF с помощью Pandoc.
 
 ```python
 def markdown_to_pdf_bytes(
@@ -535,6 +623,7 @@ def markdown_to_pdf_bytes(
     math_delims: MathDelims = "dollars",
     debug: bool = False,
 ) -> bytes:
+    """Преобразует Markdown в PDF с помощью Pandoc."""
     markdown_text = _ensure_nonempty_markdown(markdown_text)
 
     input_format = "markdown"
@@ -605,20 +694,185 @@ def markdown_to_pdf_bytes(
         return out_pdf.read_bytes()
 ```
 ---
+## def images_bytes_to_markdown:
+#### Обрабатывает несколько изображений подряд.
+Перед текстом каждого фото добавляет:
+    Фото 1
+    Фото 2
+    ...
+
+```python
+def images_bytes_to_markdown(
+    images: list[bytes],
+    math_delims: MathDelims = "dollars",
+    contain_formula: bool = True,
+) -> str:
+    """Обрабатывает несколько изображений подряд.
+
+    Перед текстом каждого фото добавляет:
+        Фото 1
+        Фото 2
+        ...
+    """
+    results: list[str] = []
+
+    for idx, image_bytes in enumerate(images, start=1):
+        logger.info(f"Processing image #{idx}")
+
+        md = image_bytes_to_markdown(
+            image_bytes=image_bytes,
+            math_delims=math_delims,
+            contain_formula=contain_formula,
+        )
+
+        md = restore_paragraphs(md)
+
+        block = f"Фото {idx}\n\n{md.strip()}"
+        results.append(block)
+
+    return "\n\n".join(results)
+```
+---
+## def summarize_markdown_openrouter_requests:
+#### Отправляет Markdown на OpenRouter AI через HTTP POST с reasoning и возвращает краткий конспект.
+Параметры:
+- md: Markdown-текст для суммаризации.
+- api_key: ключ OpenRouter API (если None, используется переменная окружения OPENROUTER_API_KEY).
+- api_base: базовый URL сервиса.
+- model: модель LLM.
+- temperature: креативность генерации.
+- max_retries: число повторов при временных ошибках.
+
+Возвращает:
+- строку с кратким конспектом Markdown + LaTeX.
+
+Исключения:
+- RuntimeError при отсутствии ключа или ошибках API.
+
+```python
+def summarize_markdown_openrouter_requests(
+    md: str,
+    api_key: str | None = None,
+    *,
+    api_base: str = "https://openrouter.ai/api/v1",
+    model: str = "arcee-ai/trinity-large-preview:free",
+    temperature: float = 0.0,
+    max_retries: int = 3,
+) -> str:
+    """Отправляет Markdown на OpenRouter AI через HTTP POST с reasoning и возвращает краткий конспект.
+
+    Параметры:
+    - md: Markdown-текст для суммаризации.
+    - api_key: ключ OpenRouter API (если None, используется переменная окружения OPENROUTER_API_KEY).
+    - api_base: базовый URL сервиса.
+    - model: модель LLM.
+    - temperature: креативность генерации.
+    - max_retries: число повторов при временных ошибках.
+
+    Возвращает:
+    - строку с кратким конспектом Markdown + LaTeX.
+
+    Исключения:
+    - RuntimeError при отсутствии ключа или ошибках API.
+    """
+    api_key = config.API_KEY
+    if not api_key:
+        raise RuntimeError("Не найден OpenRouter API key.")
+
+    url = api_base.rstrip("/") + "/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    messages = [
+        {
+            "role": "user",
+            "content": f"Сделай краткий конспект этого текста, сохрани форматы Markdown и формулы LaTeX:\n\n{md}",
+        }
+    ]
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = requests.post(
+                url=url,
+                headers=headers,
+                data=json.dumps(
+                    {
+                        "model": model,
+                        "messages": messages,
+                        "temperature": temperature,
+                        "reasoning": {"enabled": True},
+                    }
+                ),
+                timeout=30,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            assistant_msg = data["choices"][0]["message"]
+
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": assistant_msg.get("content"),
+                    "reasoning_details": assistant_msg.get("reasoning_details"),
+                }
+            )
+
+            return assistant_msg.get("content", "").strip()
+
+        except requests.RequestException as e:
+            logger.warning(f"Попытка {attempt} не удалась: {e}")
+            if attempt == max_retries:
+                raise RuntimeError(
+                    f"Не удалось получить ответ после {max_retries} попыток: {e}"
+                ) from None
+
+        except (KeyError, ValueError) as e:
+            raise RuntimeError(
+                f"Непредвиденный формат ответа OpenRouter: {e}"
+            ) from None
+```
+---
+## def images_bytes_to_pdf_bytes:
+#### OCR нескольких фото → единый PDF.
+Если summarize=True, текст будет дополнительно сокращен через OpenAI.
+
+```python
+def images_bytes_to_pdf_bytes(images: list[bytes], summarize: bool = True) -> bytes:
+    """OCR нескольких фото → единый PDF.
+
+    Если summarize=True, текст будет дополнительно сокращен через OpenAI.
+    """
+    md = images_bytes_to_markdown(images)
+
+    if summarize:
+        try:
+            md_summary = summarize_markdown_openrouter_requests(md)
+            md = md_summary
+        except Exception as e:
+            logger.warning(f"Не удалось сделать саммари: {e}")
+
+    return markdown_to_pdf_bytes(md)
+```
+---
 ## def image_bytes_to_pdf_bytes:
 #### Главная функция OCR→Markdown→PDF.
 Для фото экрана (квадратных) автоматически включает skip_warp=True.
+Если summarize=True, текст будет дополнительно сокращен через OpenAI.
 
 ```python
-def image_bytes_to_pdf_bytes(image_bytes: bytes) -> bytes:
-    """
-    Главная функция OCR→Markdown→PDF.
+def image_bytes_to_pdf_bytes(image_bytes: bytes, summarize: bool = True) -> bytes:
+    """Главная функция OCR→Markdown→PDF.
+
     Для фото экрана (квадратных) автоматически включает skip_warp=True.
+    Если summarize=True, текст будет дополнительно сокращен через OpenAI.
     """
     img_test = Image.open(io.BytesIO(image_bytes))
     w, h = img_test.size
     aspect = w / h if h > 0 else 1.0
-    skip_warp = 0.8 < aspect < 1.25
+    skip_warp = False
 
     logger.info(
         f"image_bytes_to_pdf_bytes: image={w}x{h}, aspect={aspect:.2f}, skip_warp={skip_warp}"
@@ -631,6 +885,14 @@ def image_bytes_to_pdf_bytes(image_bytes: bytes) -> bytes:
         contain_formula=True,
     )
     md = restore_paragraphs(md)
+
+    if summarize:
+        try:
+            md_summary = summarize_markdown_openrouter_requests(md)
+            md = md_summary
+        except Exception as e:
+            logger.warning(f"Не удалось сделать саммари: {e}")
+
     return markdown_to_pdf_bytes(md, math_delims="dollars", debug=False)
 ```
 ---

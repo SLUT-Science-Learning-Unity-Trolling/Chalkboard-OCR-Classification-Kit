@@ -101,25 +101,19 @@
             UserCreationError: Если произошла ошибка при создании пользователя.
         """
         if password != repeat_password:
-            raise PasswordDontMatchError
+            raise PasswordDontMatchError("Пароли не совпадают")
 
-        if not await self._validator.validate_password(password):
-            raise PasswordValidationError
-
-        if not await self._validator.validate_username(username):
-            raise UsernameValidationError
+        self._validator.validate_password(password)
+        self._validator.validate_username(username)
 
         existing_user = await self.does_user_exists(username, email)
         if existing_user:
             if existing_user.get("username") == username:
-                raise UsernameAlreadyTakenError
+                raise UsernameAlreadyTakenError("Имя пользователя уже занято")
             if existing_user.get("email") == email.lower():
-                raise EmailAlreadyTakenError
+                raise EmailAlreadyTakenError("Почта уже занята")
 
-        try:
-            validate_email(email, test_environment=config.Config.DEBUG)
-        except EmailNotValidError:
-            raise EmailValidationError("Введите корректный email") from None
+        self._validator.validate_email(email)
 
         salt, _hash = self._security.hash_password(password)
         password_hash = self._security.serialize_hash(salt, _hash)

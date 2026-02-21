@@ -22,6 +22,7 @@
         Args:
             message (str | Exception): Сообщение об ошибке.
         """
+        super().__init__(message)
         self.message: str | Exception = message
 ```
 ---
@@ -45,6 +46,7 @@
         Args:
             message (str | Exception): Сообщение об ошибке.
         """
+        super().__init__(message)
         self.message: str | Exception = message
 ```
 ---
@@ -68,6 +70,7 @@
         Args:
             message (str | Exception): Сообщение об ошибке.
         """
+        super().__init__(message)
         self.message: str | Exception = message
 ```
 ---
@@ -91,6 +94,7 @@
         Args:
             message (str | Exception): Сообщение об ошибке.
         """
+        super().__init__(message)
         self.message: str | Exception = message
 ```
 ---
@@ -114,6 +118,7 @@
         Args:
             message (str | Exception): Сообщение об ошибке.
         """
+        super().__init__(message)
         self.message: str | Exception = message
 ```
 ---

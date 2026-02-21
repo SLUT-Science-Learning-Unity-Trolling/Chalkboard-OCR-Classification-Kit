@@ -34,6 +34,7 @@ nav:
           - Models:
               - User: core/domain/models/user.md
               - Image: core/domain/models/image.md
+              - Token: core/domain/models/token.md
       - Services:
           - User Service: core/services/user_service.md
           - Auth Service: core/services/auth_service.md
@@ -52,18 +53,27 @@ nav:
       - Schemas:
           - User DTO: api/schemas/user_dto.md
           - Image DTO: api/schemas/image_dto.md
+      - Exceptions:
+          - Handlers: api/exceptions/handlers.md
+          - Problem Details DTO: api/exceptions/problem_details_dto.md
+          - Problem Factory: api/exceptions/problem_factory.md
   - Adapters:
       - Gateways:
           - Mongo Gateway: adapters/gateways/mongo.md
           - Minio Gateway: adapters/gateways/s3.md
+          - Redis Gateway: adapters/gateways/redis.md
       - Repositories:
           - Abstract Repository: adapters/repositories/abc_repo.md
           - Mongo Repository: adapters/repositories/mongo_repo.md
           - User Repository: adapters/repositories/user_repo.md
           - Image Repository: adapters/repositories/image_repo.md
+          - Redis Blacklist Repository: adapters/repositories/redis_blacklist_repo.md
+          - Redis RateLimit Repository: adapters/repositories/redis_rate_limit_repo.md
       - Interfaces:
           - Database Interface: adapters/interfaces/db.md
           - Minio Interface: adapters/interfaces/s3.md
+  - Monitoring:
+      - API Monitor: app/monitoring/api_monitor.md
   - Main: main.md
   - Container: container.md
   - Config: config.md

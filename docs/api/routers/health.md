@@ -1,80 +1,270 @@
 # Модуль health
 
-Модуль содержит эндпоинты для проверки работы сервера и подключения к MongoDB.
+Модуль содержит эндпоинты для проверки работы сервера и подключения к сервисам.
 
 ## def server_health_check:
 #### Проверка работы сервера.
 #### Маршруты:
-- `@get("/health/server", status_code=HTTP_200_OK)`
-
-#### Возвращает
-| Тип | Описание |
-|-----|----------|
-| `JSONResponse` | Ответ |
+- `@get( "/server", summary="Проверка работы сервера", description="Эндпоинт проверяет доступность сервера", tags=["Debug"], status_code=HTTP_200_OK, responses={ HTTP_200_OK: ResponseSpec( description="Сервер работает", data_container=None, examples=[ Example( value={"status": "ok"}, )`
 
 ```python
-@get("/health/server", status_code=HTTP_200_OK)
+@get(
+    "/server",
+    summary="Проверка работы сервера",
+    description="Эндпоинт проверяет доступность сервера",
+    tags=["Debug"],
+    status_code=HTTP_200_OK,
+    responses={
+        HTTP_200_OK: ResponseSpec(
+            description="Сервер работает",
+            data_container=None,
+            examples=[
+                Example(
+                    value={"status": "ok"},
+                )
+            ],
+        ),
+        HTTP_500_INTERNAL_SERVER_ERROR: ResponseSpec(
+            description="Сервер недоступен",
+            data_container=ProblemDetailsDTO,
+            examples=[
+                Example(
+                    value=ErrorCodes.SERVICE_CONNECTION_ERROR.example(
+                        "Сервер не отвечает"
+                    ),
+                )
+            ],
+        ),
+    },
+)
 def server_health_check() -> JSONResponse:
-    """Проверка работы сервера.
-
-    Returns:
-        JSONResponse: Ответ
-    """
+    """Проверка работы сервера."""
     return JSONResponse({"status": "ok"})
 ```
 ---
 ## def db_health_check:
-#### Проверка работы сервера и подключения к MongoDB.
+#### Проверка подключения к MongoDB.
 #### Маршруты:
-- `@get("/health/db", status_code=HTTP_200_OK)`
-
-#### Возвращает
-| Тип | Описание |
-|-----|----------|
-| `JSONResponse` | Ответ |
+- `@get( "/db", summary="Проверка подключения к MongoDB", description="Эндпоинт проверяет возможность подключения к MongoDB", tags=["Debug"], status_code=HTTP_200_OK, responses={ HTTP_200_OK: ResponseSpec( description="MongoDB подключена", data_container=None, examples=[ Example( value={"status": "ok", "mongodb": "connected"}, )`
 
 ```python
-@get("/health/db", status_code=HTTP_200_OK)
+@get(
+    "/db",
+    summary="Проверка подключения к MongoDB",
+    description="Эндпоинт проверяет возможность подключения к MongoDB",
+    tags=["Debug"],
+    status_code=HTTP_200_OK,
+    responses={
+        HTTP_200_OK: ResponseSpec(
+            description="MongoDB подключена",
+            data_container=None,
+            examples=[
+                Example(
+                    value={"status": "ok", "mongodb": "connected"},
+                )
+            ],
+        ),
+        HTTP_500_INTERNAL_SERVER_ERROR: ResponseSpec(
+            description="Ошибка подключения к MongoDB",
+            data_container=ProblemDetailsDTO,
+            examples=[
+                Example(
+                    value=ErrorCodes.SERVICE_CONNECTION_ERROR.example(
+                        "Не удалось подключиться к MongoDB"
+                    ),
+                )
+            ],
+        ),
+    },
+)
 async def db_health_check() -> JSONResponse:
-    """Проверка работы сервера и подключения к MongoDB.
-
-    Returns:
-        JSONResponse: Ответ
-    """
+    """Проверка подключения к MongoDB."""
     try:
         await client.admin.command("ping")
         return JSONResponse({"status": "ok", "mongodb": "connected"})
     except ConnectionFailure as e:
         return JSONResponse(
-            {"status": "error", "mongodb": f"failed: {str(e)}"}, status_code=500
+            {"status": "error", "mongodb": f"failed: {str(e)}"},
+            status_code=500,
         )
 ```
 ---
 ## def minio_health_check:
-#### Проверка работы сервера и подключения к MinIO.
+#### Проверка подключения к MinIO.
 #### Маршруты:
-- `@get("/health/minio", status_code=HTTP_200_OK)`
-
-#### Возвращает
-| Тип | Описание |
-|-----|----------|
-| `JSONResponse` | Ответ |
+- `@get( "/minio", summary="Проверка подключения к MinIO", description="Эндпоинт проверяет возможность подключения к MinIO", tags=["Debug"], status_code=HTTP_200_OK, responses={ HTTP_200_OK: ResponseSpec( description="MinIO подключен", data_container=None, examples=[ Example( value={"status": "ok", "minio": "connected"}, )`
 
 ```python
-@get("/health/minio", status_code=HTTP_200_OK)
+@get(
+    "/minio",
+    summary="Проверка подключения к MinIO",
+    description="Эндпоинт проверяет возможность подключения к MinIO",
+    tags=["Debug"],
+    status_code=HTTP_200_OK,
+    responses={
+        HTTP_200_OK: ResponseSpec(
+            description="MinIO подключен",
+            data_container=None,
+            examples=[
+                Example(
+                    value={"status": "ok", "minio": "connected"},
+                )
+            ],
+        ),
+        HTTP_500_INTERNAL_SERVER_ERROR: ResponseSpec(
+            description="Ошибка подключения к MinIO",
+            data_container=ProblemDetailsDTO,
+            examples=[
+                Example(
+                    value=ErrorCodes.SERVICE_CONNECTION_ERROR.example(
+                        "Не удалось подключиться к MinIO"
+                    ),
+                )
+            ],
+        ),
+    },
+)
 async def minio_health_check() -> JSONResponse:
-    """Проверка работы сервера и подключения к MinIO.
-
-    Returns:
-        JSONResponse: Ответ
-    """
+    """Проверка подключения к MinIO."""
     try:
         minio_gateway.connect()
         _ = minio_gateway._client.list_buckets()
         return JSONResponse({"status": "ok", "minio": "connected"})
     except Exception as e:
         return JSONResponse(
-            {"status": "error", "minio": f"failed: {str(e)}"}, status_code=500
+            {"status": "error", "minio": f"failed: {str(e)}"},
+            status_code=500,
         )
+```
+---
+## def redis_health_check:
+#### Проверка подключения к Redis.
+#### Маршруты:
+- `@get( "/redis", summary="Проверка подключения к Redis", description="Эндпоинт проверяет возможность подключения к Redis", tags=["Debug"], status_code=HTTP_200_OK, responses={ HTTP_200_OK: ResponseSpec( description="Redis подключен", data_container=None, examples=[ Example( value={"status": "ok", "redis": "connected"}, )`
+
+```python
+@get(
+    "/redis",
+    summary="Проверка подключения к Redis",
+    description="Эндпоинт проверяет возможность подключения к Redis",
+    tags=["Debug"],
+    status_code=HTTP_200_OK,
+    responses={
+        HTTP_200_OK: ResponseSpec(
+            description="Redis подключен",
+            data_container=None,
+            examples=[
+                Example(
+                    value={"status": "ok", "redis": "connected"},
+                )
+            ],
+        ),
+        HTTP_500_INTERNAL_SERVER_ERROR: ResponseSpec(
+            description="Ошибка подключения к Redis",
+            data_container=ProblemDetailsDTO,
+            examples=[
+                Example(
+                    value=ErrorCodes.SERVICE_CONNECTION_ERROR.example(
+                        "Не удалось подключиться к Redis",
+                    ),
+                )
+            ],
+        ),
+    },
+)
+async def redis_health_check() -> JSONResponse:
+    """Проверка подключения к Redis."""
+    try:
+        await redis_blacklist_gateway.connect()
+        _: Redis = await redis_blacklist_gateway._client.ping()
+        await redis_rate_limit_gateway.connect()
+        _: Redis = await redis_rate_limit_gateway._client.ping()
+        return JSONResponse({"status": "ok", "redis": "connected"})
+    except Exception as e:
+        return (
+            JSONResponse(
+                {"status": "error", "redis": f"failed: {str(e)}"},
+                status_code=500,
+            ),
+        )
+```
+---
+## def all_services_health_check:
+#### Проверка подключения ко всем сервисам.
+#### Маршруты:
+- `@get( "/all", summary="Проверка подключения ко всем сервисам", description="Эндпоинт проверяет возможность подключения ко всем сервисам (MongoDB, MinIO, Redis)", tags=["Debug"], status_code=HTTP_200_OK, responses={ HTTP_200_OK: ResponseSpec( description="Все сервисы подключены", data_container=None, examples=[ Example( value={ "status": "ok", "mongodb": "connected", "minio": "connected", "redis": "connected", }, )`
+
+```python
+@get(
+    "/all",
+    summary="Проверка подключения ко всем сервисам",
+    description="Эндпоинт проверяет возможность подключения ко всем сервисам (MongoDB, MinIO, Redis)",
+    tags=["Debug"],
+    status_code=HTTP_200_OK,
+    responses={
+        HTTP_200_OK: ResponseSpec(
+            description="Все сервисы подключены",
+            data_container=None,
+            examples=[
+                Example(
+                    value={
+                        "status": "ok",
+                        "mongodb": "connected",
+                        "minio": "connected",
+                        "redis": "connected",
+                    },
+                )
+            ],
+        ),
+        HTTP_500_INTERNAL_SERVER_ERROR: ResponseSpec(
+            description="Ошибка подключения к одному или нескольким сервисам",
+            data_container=ProblemDetailsDTO,
+            examples=[
+                Example(
+                    value=ErrorCodes.SERVICE_CONNECTION_ERROR.example(
+                        "Не удалось подключиться к одному или нескольким сервисам"
+                    ),
+                )
+            ],
+        ),
+    },
+)
+async def all_services_health_check() -> JSONResponse:
+    """Проверка подключения ко всем сервисам."""
+    errors = {}
+
+    # Проверка MongoDB
+    try:
+        await client.admin.command("ping")
+    except ConnectionFailure as e:
+        errors["mongodb"] = f"failed: {str(e)}"
+
+    # Проверка MinIO
+    try:
+        minio_gateway.connect()
+        _ = minio_gateway._client.list_buckets()
+    except Exception as e:
+        errors["minio"] = f"failed: {str(e)}"
+
+    # Проверка Redis
+    try:
+        await redis_blacklist_gateway.connect()
+        _: Redis = await redis_blacklist_gateway._client.ping()
+        await redis_rate_limit_gateway.connect()
+        _: Redis = await redis_rate_limit_gateway._client.ping()
+    except Exception as e:
+        errors["redis"] = f"failed: {str(e)}"
+
+    if not errors:
+        return JSONResponse(
+            {
+                "status": "ok",
+                "mongodb": "connected",
+                "minio": "connected",
+                "redis": "connected",
+            }
+        )
+    else:
+        return JSONResponse({"status": "error", **errors}, status_code=500)
 ```
 ---
