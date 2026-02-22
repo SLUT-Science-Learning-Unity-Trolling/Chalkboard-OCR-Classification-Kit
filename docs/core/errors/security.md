@@ -6,6 +6,11 @@
 
 **Исключение, возникающее при превышении лимита запросов.**
 
+```python
+class TooManyRequestsError(Exception):
+    """Исключение, возникающее при превышении лимита запросов."""
+```
+
 ---
 ## def init:
 #### Конструктор.
@@ -13,7 +18,7 @@
 #### Аргументы
 | Аргумент | Тип | Описание |
 |----------|-----|----------|
-| `message` | `str | Exception, optional` | Сообщение об ошибке". |
+| `message` | `str \| Exception` | Сообщение об ошибке". (optional) |
 
 ```python
     def __init__(self, message: str | Exception = "Превышен лимит запросов.", retry_after: int | None = None) -> None:
@@ -31,6 +36,11 @@
 
 **Исключение, возникающее при невалидном токене.**
 
+```python
+class InvalidTokenError(Exception):
+    """Исключение, возникающее при невалидном токене."""
+```
+
 ---
 ## def init:
 #### Конструктор.
@@ -38,7 +48,7 @@
 #### Аргументы
 | Аргумент | Тип | Описание |
 |----------|-----|----------|
-| `message` | `str | Exception, optional` | Сообщение об ошибке". |
+| `message` | `str \| Exception` | Сообщение об ошибке". (optional) |
 
 ```python
     def __init__(self, message: str | Exception = "Сессия не действительна.") -> None:

@@ -5,7 +5,24 @@
 ## Класс AuthService
 
 **Сервис для аутентификации пользователей.**
-Обрабатывает логин пользователей, проверку пароля и генерацию JWT-токенов.
+
+Методы класса обеспечивают:
+    - Авторизацию существующих пользователей.
+    - Получение текущего пользователя по access_token.
+    - Перевыпуск access и refresh токенов.
+    - Добавление токенов в черный список.
+
+```python
+class AuthService:
+    """Сервис для аутентификации пользователей.
+
+    Методы класса обеспечивают:
+        - Авторизацию существующих пользователей.
+        - Получение текущего пользователя по access_token.
+        - Перевыпуск access и refresh токенов.
+        - Добавление токенов в черный список.
+    """
+```
 
 ---
 ## def init:
@@ -47,6 +64,7 @@
 ---
 ## async def auth_existing_user:
 #### Аутентификация существующего пользователя по email или username.
+
 Проверяет существование пользователя, валидирует пароль и
 генерирует JWT-токен для авторизации.
 
@@ -60,7 +78,7 @@
 #### Возвращает
 | Тип | Описание |
 |-----|----------|
-| `tuple[UserDTO, str]` | DTO пользователя и JWT-токен. |
+| `tuple[UserDTO, str, str]` | DTO пользователя и JWT-токен. |
 
 #### Исключения
 | Исключение | Описание |
@@ -85,7 +103,7 @@
             InvalidEmailOrPassword: Если пользователь не найден или пароль неверный.
 
         Returns:
-            tuple[UserDTO, str]: DTO пользователя и JWT-токен.
+            tuple[UserDTO, str, str]: DTO пользователя и JWT-токен.
         """
         is_email: bool = "@" in identifier
 
@@ -147,6 +165,7 @@
 ---
 ## def get_current_user:
 #### Возвращает текущего авторизованного пользователя.
+
 Проверяет JWT-токен в cookies запроса, извлекает пользователя из базы
 через UserService и возвращает его DTO.
 
@@ -211,13 +230,46 @@
 ```
 ---
 ## async def refresh_tokens:
-#### Перевыпуск access и refresh токена по валидному refresh_token.
+#### Перевыпуск access и refresh токенов по валидному refresh_token.
+
+Проверяет черный список токенов и валидность PASETO.
+
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `refresh_token` | `str` | Токен для обновления access токена. |
+| `access_token` | `Optional[str]` | Существующий access_token (если есть). |
+| `client_ip` | `str` | IP-адрес клиента для проверки лимита. |
+
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `tuple[str, str]` | Новый access_token и refresh_token. |
+
+#### Исключения
+| Исключение | Описание |
+|------------|----------|
+| `UnauthorizedError` | Если токен невалиден или в черном списке. |
 
 ```python
     async def refresh_tokens(
         self, refresh_token: str, access_token: str | None, client_ip: str
     ) -> tuple[str, str]:
-        """Перевыпуск access и refresh токена по валидному refresh_token."""
+        """Перевыпуск access и refresh токенов по валидному refresh_token.
+
+        Проверяет черный список токенов и валидность PASETO.
+
+        Args:
+            refresh_token (str): Токен для обновления access токена.
+            access_token (Optional[str]): Существующий access_token (если есть).
+            client_ip (str): IP-адрес клиента для проверки лимита.
+
+        Raises:
+            UnauthorizedError: Если токен невалиден или в черном списке.
+
+        Returns:
+            tuple[str, str]: Новый access_token и refresh_token.
+        """
         if not refresh_token:
             raise UnauthorizedError("Пользователь не авторизован")
 
@@ -297,11 +349,36 @@
 ```
 ---
 ## async def _blacklist_token:
-#### Парсит токен и добавляет его jti в blacklist, если валиден.
+#### Добавляет PASETO токен в черный список по jti.
+
+Проверяет тип токена и сохраняет jti в RedisBlacklistRepo.
+
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `token` | `str` | PASETO токен для добавления в blacklist. |
+| `expected_type` | `str` | Ожидаемый тип токена ("access" или "refresh"). |
+| `expires_in` | `int` | Время жизни токена в секундах. |
+
+#### Исключения
+| Исключение | Описание |
+|------------|----------|
+| `InvalidTokenError` | Если токен недействителен или тип не совпадает. |
 
 ```python
     async def _blacklist_token(self, token: str, expected_type: str, expires_in: int) -> None:
-        """Парсит токен и добавляет его jti в blacklist, если валиден."""
+        """Добавляет PASETO токен в черный список по jti.
+
+        Проверяет тип токена и сохраняет jti в RedisBlacklistRepo.
+
+        Args:
+            token (str): PASETO токен для добавления в blacklist.
+            expected_type (str): Ожидаемый тип токена ("access" или "refresh").
+            expires_in (int): Время жизни токена в секундах.
+
+        Raises:
+            InvalidTokenError: Если токен недействителен или тип не совпадает.
+        """
         try:
             parsed = paseto.parse(key=token_key, purpose="local", token=token)
             claims = parsed["message"]

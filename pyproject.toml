@@ -58,6 +58,7 @@ mypy = "^1.15.0"
 pytest-benchmark = "^5.1.0"
 pytest = "^8.4.2"
 ruff = "^0.13.3"
+deptry = "^0.24.0"
 
 [tool.jam]
 auth_type = "jwt"

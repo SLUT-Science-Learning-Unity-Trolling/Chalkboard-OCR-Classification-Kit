@@ -76,7 +76,18 @@ async def ocr_to_pdf(
     current_user: UserDTO,
     data: Annotated[list[UploadFile], Body(media_type=RequestEncodingType.MULTI_PART)],
 ) -> Response:
-    """Принимает несколько изображений и возвращает один PDF, где перед каждым блоком текста будет: [Фото 1, Фото 2, ...]."""
+    """Эндпоинт преобразования изображений в PDF.
+
+    Принимает список изображений и формирует единый PDF-файл
+
+    Args:
+        container (Container): DI-контейнер для получения сервисов.
+        current_user (UserDTO): Текущий авторизованный пользователь.
+        data (list[UploadFile]): Список загруженных файлов (изображений).
+
+    Returns:
+        Response: PDF-файл с объединёнными изображениями.
+    """
     images_bytes: list[bytes] = []
 
     for file in data:

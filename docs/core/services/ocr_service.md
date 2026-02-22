@@ -5,6 +5,17 @@
 ## Класс OcrBox
 
 **Результат распознавания одного блока текста/формулы.**
+
+```python
+@dataclass
+class OcrBox:
+    """Результат распознавания одного блока текста/формулы."""
+
+    type: Literal["text", "embedding", "isolated"]
+    text: str
+    score: float
+    box: np.ndarray
+```
 ## def build_p2t_formula:
 #### Pix2Text для формул. Отключаем лишние фичи, чтобы чуть быстрее работало и не ломалось на странных фото.
 
@@ -135,6 +146,7 @@ def _find_largest_quad(
 ---
 ## def _enhance_for_ocr:
 #### Возвращает PIL-изображение, готовое для распознавания.
+
 По умолчанию — CLAHE + мягкое шумоподавление + upscale (до распознавания).
 Если force_binary=True — вернёт бинаризованную версию (использовать только для детекции/специфичных задач).
 
@@ -531,6 +543,7 @@ def unwrap_plain_text_math(md: str) -> str:
 ---
 ## def replace_lat_to_cyr_outside_math:
 #### Заменяет латиницу на кириллицу ТОЛЬКО вне LaTeX-математики.
+
 $$...$$, \[...\], \( ... \) не трогаются.
 
 ```python
@@ -696,6 +709,7 @@ def markdown_to_pdf_bytes(
 ---
 ## def images_bytes_to_markdown:
 #### Обрабатывает несколько изображений подряд.
+
 Перед текстом каждого фото добавляет:
     Фото 1
     Фото 2
@@ -735,6 +749,7 @@ def images_bytes_to_markdown(
 ---
 ## def summarize_markdown_openrouter_requests:
 #### Отправляет Markdown на OpenRouter AI через HTTP POST с reasoning и возвращает краткий конспект.
+
 Параметры:
 - md: Markdown-текст для суммаризации.
 - api_key: ключ OpenRouter API (если None, используется переменная окружения OPENROUTER_API_KEY).
@@ -837,6 +852,7 @@ def summarize_markdown_openrouter_requests(
 ---
 ## def images_bytes_to_pdf_bytes:
 #### OCR нескольких фото → единый PDF.
+
 Если summarize=True, текст будет дополнительно сокращен через OpenAI.
 
 ```python
@@ -859,6 +875,7 @@ def images_bytes_to_pdf_bytes(images: list[bytes], summarize: bool = True) -> by
 ---
 ## def image_bytes_to_pdf_bytes:
 #### Главная функция OCR→Markdown→PDF.
+
 Для фото экрана (квадратных) автоматически включает skip_warp=True.
 Если summarize=True, текст будет дополнительно сокращен через OpenAI.
 

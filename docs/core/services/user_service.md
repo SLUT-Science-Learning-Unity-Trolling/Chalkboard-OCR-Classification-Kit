@@ -6,6 +6,11 @@
 
 **Сервис для работы с пользователями.**
 
+```python
+class UserService:
+    """Сервис для работы с пользователями."""
+```
+
 ---
 ## def init:
 #### Конструктор.
@@ -46,6 +51,7 @@
 ---
 ## async def create_user:
 #### Создает нового пользователя.
+
 Проверяет корректность пароля, уникальность имени пользователя и email,
 валидирует email и создает хэш пароля.
 
@@ -65,13 +71,10 @@
 #### Исключения
 | Исключение | Описание |
 |------------|----------|
-| `PasswordDontMatch` | Если пароли не совпадают. |
-| `PasswordValidationError` | Если пароль не проходит проверку валидатором. |
-| `UsernameValidationError` | Если имя пользователя некорректное. |
+| `PasswordDontMatchError` | Если пароли не совпадают. |
 | `UsernameAlreadyTaken` | Если имя пользователя уже занято. |
-| `EmailAlreadyTaken` | Если email уже используется. |
-| `EmailValidationError` | Если email некорректный. |
-| `UserCreationError` | Если произошла ошибка при создании пользователя. |
+| `EmailAlreadyTakenError` | Если email уже используется. |
+| `UserCreationError` | Если произошла ошибка на сервере. |
 
 ```python
     async def create_user(
@@ -92,13 +95,10 @@
             User: Экземпляр созданного пользователя.
 
         Raises:
-            PasswordDontMatch: Если пароли не совпадают.
-            PasswordValidationError: Если пароль не проходит проверку валидатором.
-            UsernameValidationError: Если имя пользователя некорректное.
+            PasswordDontMatchError: Если пароли не совпадают.
             UsernameAlreadyTaken: Если имя пользователя уже занято.
-            EmailAlreadyTaken: Если email уже используется.
-            EmailValidationError: Если email некорректный.
-            UserCreationError: Если произошла ошибка при создании пользователя.
+            EmailAlreadyTakenError: Если email уже используется.
+            UserCreationError: Если произошла ошибка на сервере.
         """
         if password != repeat_password:
             raise PasswordDontMatchError("Пароли не совпадают")

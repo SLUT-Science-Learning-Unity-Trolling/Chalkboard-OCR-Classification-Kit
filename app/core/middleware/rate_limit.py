@@ -12,12 +12,37 @@ from app.core.errors.security import TooManyRequestsError
 
 
 def rate_limit_middleware(container: Container) -> Callable[[ASGIApp], ASGIApp]:
-    """Middleware для rate limiting.
+    """Фабрика ASGI middleware для rate limiting.
 
-    Разделяет лимиты на login, refresh и остальные запросы.
+    Middleware извлекает `RedisRateLimitRepo` из DI-контейнера для проверки лимитов.
+
+    Args:
+        container (Container): DI-контейнер с сервисами приложения.
+
+    Returns:
+        Callable[[ASGIApp], ASGIApp]: Функция, принимающая ASGI-приложение и возвращающая обёрнутое приложение с rate-limit проверкой.
     """
 
     def create_middleware(app: ASGIApp) -> ASGIApp:
+        """Создаёт middleware для ограничения количества запросов.
+
+        Логика middleware:
+            - Обрабатывает только HTTP-запросы.
+            - Получает IP клиента через request.client или заголовок X-Forwarded-For.
+            - Определяет лимиты в зависимости от пути запроса:
+                * /auth/login → 15 запросов / 15 минут
+                * /auth/refresh → 15 запросов / 15 минут
+                * остальные → 120 запросов / 1 минута
+            - Проверяет лимит через RedisRateLimitRepo.
+            - Если лимит превышен, генерирует TooManyRequestsError с retry_after.
+            - Иначе пропускает запрос дальше.
+
+        Args:
+            app (ASGIApp): ASGI-приложение для обёртывания.
+
+        Returns:
+            ASGIApp: Обёрнутое приложение с проверкой лимитов запросов.
+        """
         async def middleware(scope: Scope, receive: Receive, send: Send) -> None:
             if scope["type"] != "http":
                 await app(scope, receive, send)

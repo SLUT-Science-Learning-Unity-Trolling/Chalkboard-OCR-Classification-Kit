@@ -25,10 +25,20 @@ logger.addHandler(file_handler)
 
 
 class ApiMonitor:
-    """Простой монитор API запросов с логированием в файл."""
+    """Простой монитор API запросов с логированием в файл.
+
+    Позволяет:
+        - Считать общее количество запросов.
+        - Собирать статистику по пути запроса, HTTP-методу и статусу ответа.
+        - Хранить замеры времени обработки (latency) по каждому пути.
+        - Выводить подробный лог в файл и на консоль в режиме отладки.
+    """
 
     def __init__(self) -> None:
-        """Конструктор."""
+        """Инициализация ApiMonitor.
+
+        Создает лок, счетчики и структуры для хранения статистики.
+        """
         self._lock = threading.Lock()
         self.total_requests = 0
         self.by_path: Counter[str] = Counter()
@@ -38,7 +48,16 @@ class ApiMonitor:
         self.debug = bool(config.DEBUG)
 
     def record(self, path: str, method: str, status: int, latency_ms: float) -> None:
-        """Счётчик."""
+        """Регистрирует один API-запрос.
+
+        Обновляет счетчики и замеры latency, логирует информацию о запросе.
+
+        Args:
+            path (str): URL путь запроса (например, "/auth/login")
+            method (str): HTTP-метод запроса ("GET", "POST", и т.д.)
+            status (int): HTTP статус ответа (например, 200, 401, 500)
+            latency_ms (float): Время обработки запроса в миллисекундах
+        """
         with self._lock:
             self.total_requests += 1
             self.by_path[path] += 1
@@ -52,7 +71,18 @@ class ApiMonitor:
             print(f"[API MON] {msg}")
 
     def snapshot(self) -> dict:
-        """Возвращает функцию с avg_latency."""
+        """Возвращает текущую сводку по статистике API.
+
+        Сводка включает:
+            - total: Общее количество запросов
+            - by_path: Счетчик запросов по пути
+            - by_method: Счетчик по HTTP-методам
+            - by_status: Счетчик по статусам ответа
+            - avg_latency_ms: Среднее время обработки по каждому пути (ms)
+
+        Returns:
+            dict: Статистика API в виде словаря
+        """
         with self._lock:
             avg_latency = {
                 p: (sum(lst) / len(lst)) if lst else 0.0 for p, lst in self.latencies.items()

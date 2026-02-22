@@ -164,7 +164,16 @@ async def auth_user(
 async def logout_user(request: Request, container: Container) -> Response:
     """Эндпоинт выхода из профиля.
 
-    Удаляет PASETO из cookie и заносит refresh (и access) токены в blacklist.
+    Производит:
+        - Удаление access и refresh токенов из cookie.
+        - Добавление токенов в blacklist на сервере.
+
+    Args:
+        request (Request): HTTP-запрос.
+        container (Container): DI-контейнер для получения сервисов.
+
+    Returns:
+        Response: Подтверждение успешного выхода с удалением cookie.
     """
     auth_service = container.resolve(AuthService)
 
@@ -241,7 +250,14 @@ async def logout_user(request: Request, container: Container) -> Response:
     },
 )
 async def get_me(current_user: UserDTO | None) -> UserDTO:
-    """Эндпоинт возвращает данные текущего пользователя."""
+    """Эндпоинт возвращает информацию о текущем пользователе.
+
+    Args:
+        current_user (UserDTO | None): Объект текущего пользователя, предоставляемый зависимостью.
+
+    Returns:
+        UserDTO: Данные текущего авторизованного пользователя.
+    """
     return current_user
 
 
@@ -291,10 +307,6 @@ async def refresh_user(request: Request, container: Container) -> Response:
 
     Returns:
         Response: Ответ с новым access токеном в cookie
-
-    Raises:
-        HTTPException: 401 если refresh токен не валиден или отсутствует
-        HTTPException: 429 если слишком много попыток обновления токенов
     """
     auth_service = container.resolve(AuthService)
 

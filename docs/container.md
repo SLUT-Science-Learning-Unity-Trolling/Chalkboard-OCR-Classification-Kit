@@ -1,17 +1,55 @@
 # Модуль container
 
-Контейнер зависимостей.
+Модуль для построения и конфигурации контейнера зависимостей.
+
+Контейнер позволяет централизованно управлять всеми сервисами, репозиториями
+и шлюзами, используемыми в приложении, обеспечивая единый доступ к
+одноэкземпляровым объектам и упрощая внедрение зависимостей.
 
 ## def build_container:
-#### Регистрация зависимостей в контейнере.
+#### Создает и конфигурирует контейнер зависимостей.
+
+Регистрация включает:
+- Шлюзы (Mongo, Redis, Minio)
+- Репозитории (UserRepo, ImageRepo, Redis Blacklist/RateLimit)
+- Сервисы (AuthService, UserService, ValidationService, SecurityService)
+- Конфигурацию приложения (Config)
+- Монитор API (ApiMonitor)
+
+Используется паттерн singleton для одноэкземпляровых объектов, таких как
+шлюзы и сервисы.
+
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `Container` | Полностью настроенный контейнер зависимостей. |
 
 ```python
 def build_container() -> Container:
-    """Регистрация зависимостей в контейнере."""
+    """Создает и конфигурирует контейнер зависимостей.
+
+    Регистрация включает:
+        - Шлюзы (Mongo, Redis, Minio)
+        - Репозитории (UserRepo, ImageRepo, Redis Blacklist/RateLimit)
+        - Сервисы (AuthService, UserService, ValidationService, SecurityService)
+        - Конфигурацию приложения (Config)
+        - Монитор API (ApiMonitor)
+
+    Используется паттерн singleton для одноэкземпляровых объектов, таких как
+    шлюзы и сервисы.
+
+    Returns:
+        Container: Полностью настроенный контейнер зависимостей.
+    """
     container = Container()
 
     def register_gateway_singleton(typ: type, factory: Any) -> None:
-        """Функция для генерации одноэкземпляровых контейнеров."""
+        """Регистрирует шлюз как одноэкземпляровый объект в контейнере.
+
+        Args:
+            typ (type): Класс шлюза
+            factory (Any): Функция для создания экземпляра шлюза
+        """
         container.register(typ, factory=factory, scope="singleton")
 
     register_gateway_singleton(MongoGateway, factory=lambda: MongoGateway())
@@ -19,7 +57,16 @@ def build_container() -> Container:
     register_gateway_singleton(MinioGateway, factory=lambda: MinioGateway())
 
     def register_redis_pair(db_index: int, gateway_name_suffix: str, repo_cls: Any) -> None:
-        """Регистрация 2 типов контейнеров редиса. Rate limit и Blacklist."""
+        """Регистрация пары Redis: шлюз + репозиторий.
+
+        Позволяет разделять БД Redis для разных целей (черный список токенов и
+        rate limiting).
+
+        Args:
+            db_index (int): Индекс базы данных Redis
+            gateway_name_suffix (str): Суффикс для создания уникального класса шлюза
+            repo_cls (Any): Класс репозитория, который использует этот шлюз
+        """
         gateway_type = type(f"RedisGatewayDb{db_index}_{gateway_name_suffix}", (RedisGateway,), {})
         register_gateway_singleton(gateway_type, factory=lambda db=db_index: RedisGateway(db=db))
         container.register(
@@ -31,7 +78,12 @@ def build_container() -> Container:
     register_redis_pair(1, "ratelimit", RedisRateLimitRepo)
 
     def register_mongo_repo(interface: Any, collection_name: str) -> None:
-        """Фабрика для регистрации монго контейнеров."""
+        """Регистрация Mongo репозитория с указанной коллекцией.
+
+        Args:
+            interface (Any): Интерфейс репозитория
+            collection_name (str): Имя коллекции в MongoDB
+        """
         container.register(
             interface,
             factory=lambda coll=collection_name: MongoRepo(

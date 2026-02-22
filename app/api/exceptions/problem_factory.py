@@ -1,9 +1,19 @@
-"""Фабрика для создания DTO с описанием ошибок."""
+"""Фабрика для генерации DTO ошибок в формате RFC 7807."""
 
 from enum import Enum
 
 class ErrorCodes(Enum):
-    """Коды ошибок."""
+    """Перечисление стандартных кодов ошибок API.
+
+    Каждый элемент содержит:
+
+    - code (str): уникальный идентификатор типа ошибки.
+    - title (str): краткое описание ошибки.
+    - status (int): HTTP-статус, соответствующий ошибке.
+
+    Используется для генерации стандартизированного словаря
+    ошибки в формате `application/problem+json`.
+    """
 
     SERVICE_CONNECTION_ERROR = (
         "service-connection-error",
@@ -48,13 +58,26 @@ class ErrorCodes(Enum):
     )
 
     def __init__(self, code: str, title: str, status: int) -> None:
-        """Конструктор."""
+        """Инициализация элемента перечисления.
+
+        Args:
+            code (str): Уникальный идентификатор типа ошибки.
+            title (str): Краткое название ошибки.
+            status (int): HTTP-статус, соответствующий ошибке.
+        """
         self.code = code
         self.title = title
         self.status = status
 
     def example(self, detail: str) -> dict[str, str | int]:
-        """Генерирует словарь с описанием ошибки в формате Problem Details."""
+        """Генерирует словарь ошибки в формате Problem Details.
+
+        Args:
+            detail (str): Детализированное сообщение об ошибке.
+
+        Returns:
+             dict[str, str | int]: Структура ошибки, совместимая с `application/problem+json`.
+        """
         return {
             "type": f"https://example.com/probs/{self.code}",
             "title": self.title,

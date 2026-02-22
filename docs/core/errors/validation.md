@@ -6,6 +6,11 @@
 
 **Исключение, возникающее при невалидном пароле.**
 
+```python
+class PasswordValidationError(Exception):
+    """Исключение, возникающее при невалидном пароле."""
+```
+
 ---
 ## def init:
 #### Конструктор.
@@ -13,7 +18,7 @@
 #### Аргументы
 | Аргумент | Тип | Описание |
 |----------|-----|----------|
-| `message` | `str | Exception, optional` | Сообщение об ошибке". |
+| `message` | `str \| Exception` | Сообщение об ошибке". (optional) |
 
 ```python
     def __init__(self, message: str | Exception = "Пароль не валиден") -> None:
@@ -30,6 +35,11 @@
 
 **Исключение, возникающее при невалидном логине.**
 
+```python
+class UsernameValidationError(Exception):
+    """Исключение, возникающее при невалидном логине."""
+```
+
 ---
 ## def init:
 #### Конструктор.
@@ -37,7 +47,7 @@
 #### Аргументы
 | Аргумент | Тип | Описание |
 |----------|-----|----------|
-| `message` | `str | Exception, optional` | Сообщение об ошибке". |
+| `message` | `str \| Exception` | Сообщение об ошибке". (optional) |
 
 ```python
     def __init__(self, message: str | Exception = "Логин не валиден") -> None:
@@ -54,6 +64,11 @@
 
 **Исключение, возникающее при невалидном расширении картинки.**
 
+```python
+class ImageExtensionValidationError(Exception):
+    """Исключение, возникающее при невалидном расширении картинки."""
+```
+
 ---
 ## def init:
 #### Конструктор.
@@ -61,7 +76,7 @@
 #### Аргументы
 | Аргумент | Тип | Описание |
 |----------|-----|----------|
-| `message` | `str | Exception, optional` | Сообщение об ошибке". |
+| `message` | `str \| Exception` | Сообщение об ошибке". (optional) |
 
 ```python
     def __init__(
@@ -82,6 +97,11 @@
 
 **Исключение, возникающее при невалидном расширении картинки.**
 
+```python
+class ImageNotFoundError(Exception):
+    """Исключение, возникающее при невалидном расширении картинки."""
+```
+
 ---
 ## def init:
 #### Конструктор.
@@ -89,7 +109,7 @@
 #### Аргументы
 | Аргумент | Тип | Описание |
 |----------|-----|----------|
-| `message` | `str | Exception, optional` | Сообщение об ошибке". |
+| `message` | `str \| Exception` | Сообщение об ошибке". (optional) |
 
 ```python
     def __init__(self, message: str | Exception = "Картинка не найдена") -> None:
@@ -106,6 +126,11 @@
 
 **Исключение, возникающее если email и username пустые.**
 
+```python
+class IdentificatorIsNullError(Exception):
+    """Исключение, возникающее если email и username пустые."""
+```
+
 ---
 ## def init:
 #### Конструктор.
@@ -113,7 +138,7 @@
 #### Аргументы
 | Аргумент | Тип | Описание |
 |----------|-----|----------|
-| `message` | `str | Exception, optional` | Сообщение об ошибке". |
+| `message` | `str \| Exception` | Сообщение об ошибке". (optional) |
 
 ```python
     def __init__(self, message: str | Exception = "Имя пользователя или почта не должны быть пустыми") -> None:

@@ -3,9 +3,26 @@
 Модуль содержит эндпоинты для работы с OCR функционалом.
 
 ## def ocr_to_pdf:
-#### Принимает несколько изображений и возвращает один PDF, где перед каждым блоком текста будет: [Фото 1, Фото 2, ...].
-#### Маршруты:
-- `@post( "/pdf", tags=["OCR"], status_code=HTTP_200_OK, dependencies={"current_user": Provide(AuthService.get_current_user)}, responses={ HTTP_200_OK: ResponseSpec( description="Файл успешно обработан и возвращен в виде PDF", data_container=None, ), HTTP_401_UNAUTHORIZED: ResponseSpec( description="Пользователь не авторизован", data_container=ProblemDetailsDTO, examples=[ Example( value=ErrorCodes.AUTHENTICATION_ERROR.example( "Пользователь не авторизован или сессия истекла" ), )`
+#### Эндпоинт преобразования изображений в PDF.
+
+Принимает список изображений и формирует единый PDF-файл
+#### Маршрут:
+- **Декоратор:** @post
+- **Маршрут:** `/pdf`
+- **Теги:** OCR
+
+
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `container` | `Container` | DI-контейнер для получения сервисов. |
+| `current_user` | `UserDTO` | Текущий авторизованный пользователь. |
+| `data` | `list[UploadFile]` | Список загруженных файлов (изображений). |
+
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `Response` | PDF-файл с объединёнными изображениями. |
 
 ```python
 @post(
@@ -58,7 +75,18 @@ async def ocr_to_pdf(
     current_user: UserDTO,
     data: Annotated[list[UploadFile], Body(media_type=RequestEncodingType.MULTI_PART)],
 ) -> Response:
-    """Принимает несколько изображений и возвращает один PDF, где перед каждым блоком текста будет: [Фото 1, Фото 2, ...]."""
+    """Эндпоинт преобразования изображений в PDF.
+
+    Принимает список изображений и формирует единый PDF-файл
+
+    Args:
+        container (Container): DI-контейнер для получения сервисов.
+        current_user (UserDTO): Текущий авторизованный пользователь.
+        data (list[UploadFile]): Список загруженных файлов (изображений).
+
+    Returns:
+        Response: PDF-файл с объединёнными изображениями.
+    """
     images_bytes: list[bytes] = []
 
     for file in data:

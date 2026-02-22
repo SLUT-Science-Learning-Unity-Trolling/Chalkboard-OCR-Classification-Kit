@@ -6,19 +6,57 @@
 
 **Данные для создания пользователя.**
 
-**Args:**
-- `username`: Имя пользователя
-- `email`: Email пользователя
-- `password`: Пароль пользователя
-- `repeat_password`: Повтор пароля пользователя
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `username` | `` | Имя пользователя |
+| `email` | `` | Email пользователя |
+| `password` | `` | Пароль пользователя |
+| `repeat_password` | `` | Повтор пароля пользователя |
+
+```python
+@dataclass(slots=True, kw_only=True)
+class UserCreateDTO:
+    """Данные для создания пользователя.
+
+    Args:
+        username: Имя пользователя
+        email: Email пользователя
+        password: Пароль пользователя
+        repeat_password: Повтор пароля пользователя
+    """
+
+    username: str
+    email: str
+    password: str
+    repeat_password: str
+```
 ## Класс UserDTO
 
 **Данные о пользователе, возвращаемые пользователю.**
 
-**Args:**
-- `id`: Уникальный идентификатор пользователя
-- `username`: Имя пользователя
-- `email`: Email пользователя
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `id` | `` | Уникальный идентификатор пользователя |
+| `username` | `` | Имя пользователя |
+| `email` | `` | Email пользователя |
+
+```python
+@dataclass()
+class UserDTO:
+    """Данные о пользователе, возвращаемые пользователю.
+
+    Args:
+        id: Уникальный идентификатор пользователя
+        username: Имя пользователя
+        email: Email пользователя
+    """
+
+    id: str
+    username: str
+    email: str
+```
 
 ---
 ## def fromrow:
@@ -56,6 +94,22 @@
 
 **Данные для авторизации пользователя.**
 
-**Args:**
-- `identifier`: Email или username пользователя
-- `password`: Пароль пользователя
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `identifier` | `` | Email или username пользователя |
+| `password` | `` | Пароль пользователя |
+
+```python
+@dataclass(slots=True, kw_only=True)
+class UserLoginDTO:
+    """Данные для авторизации пользователя.
+
+    Args:
+        identifier: Email или username пользователя
+        password: Пароль пользователя
+    """
+
+    identifier: str
+    password: str
+```

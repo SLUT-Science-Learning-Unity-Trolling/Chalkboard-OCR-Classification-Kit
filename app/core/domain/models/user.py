@@ -10,10 +10,11 @@ from bson import ObjectId
 class User:
     """Доменная модель пользователя.
 
-    Args:
-        _id: Уникальный идентификатор пользователя
-        username: Имя пользователя
-        email: Email пользователя
+    Attributes:
+        _id (ObjectId): Уникальный идентификатор пользователя
+        username (str): Имя пользователя
+        email (str): Email пользователя
+        password_hash (str): Хэш пароля
     """
 
     _id: ObjectId

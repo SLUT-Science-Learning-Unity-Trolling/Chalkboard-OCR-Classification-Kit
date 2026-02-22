@@ -6,6 +6,11 @@
 
 **Класс для работы с MongoDB.**
 
+```python
+class MongoGateway:
+    """Класс для работы с MongoDB."""
+```
+
 ---
 ## def init:
 #### Конструктор.

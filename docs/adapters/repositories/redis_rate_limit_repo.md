@@ -6,6 +6,11 @@
 
 **Репозиторий для работы с rate limit в Redis.**
 
+```python
+class RedisRateLimitRepo:
+    """Репозиторий для работы с rate limit в Redis."""
+```
+
 ---
 ## def init:
 #### Инициализация репозитория.

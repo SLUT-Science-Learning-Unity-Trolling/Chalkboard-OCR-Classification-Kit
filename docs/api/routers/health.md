@@ -4,8 +4,13 @@
 
 ## def server_health_check:
 #### Проверка работы сервера.
-#### Маршруты:
-- `@get( "/server", summary="Проверка работы сервера", description="Эндпоинт проверяет доступность сервера", tags=["Debug"], status_code=HTTP_200_OK, responses={ HTTP_200_OK: ResponseSpec( description="Сервер работает", data_container=None, examples=[ Example( value={"status": "ok"}, )`
+#### Маршрут:
+- **Декоратор:** @get
+- **Маршрут:** `/server`
+- **Заголовок:** Проверка работы сервера
+- **Описание:** Эндпоинт проверяет доступность сервера
+- **Теги:** Debug
+
 
 ```python
 @get(
@@ -44,8 +49,13 @@ def server_health_check() -> JSONResponse:
 ---
 ## def db_health_check:
 #### Проверка подключения к MongoDB.
-#### Маршруты:
-- `@get( "/db", summary="Проверка подключения к MongoDB", description="Эндпоинт проверяет возможность подключения к MongoDB", tags=["Debug"], status_code=HTTP_200_OK, responses={ HTTP_200_OK: ResponseSpec( description="MongoDB подключена", data_container=None, examples=[ Example( value={"status": "ok", "mongodb": "connected"}, )`
+#### Маршрут:
+- **Декоратор:** @get
+- **Маршрут:** `/db`
+- **Заголовок:** Проверка подключения к MongoDB
+- **Описание:** Эндпоинт проверяет возможность подключения к MongoDB
+- **Теги:** Debug
+
 
 ```python
 @get(
@@ -91,8 +101,13 @@ async def db_health_check() -> JSONResponse:
 ---
 ## def minio_health_check:
 #### Проверка подключения к MinIO.
-#### Маршруты:
-- `@get( "/minio", summary="Проверка подключения к MinIO", description="Эндпоинт проверяет возможность подключения к MinIO", tags=["Debug"], status_code=HTTP_200_OK, responses={ HTTP_200_OK: ResponseSpec( description="MinIO подключен", data_container=None, examples=[ Example( value={"status": "ok", "minio": "connected"}, )`
+#### Маршрут:
+- **Декоратор:** @get
+- **Маршрут:** `/minio`
+- **Заголовок:** Проверка подключения к MinIO
+- **Описание:** Эндпоинт проверяет возможность подключения к MinIO
+- **Теги:** Debug
+
 
 ```python
 @get(
@@ -139,8 +154,13 @@ async def minio_health_check() -> JSONResponse:
 ---
 ## def redis_health_check:
 #### Проверка подключения к Redis.
-#### Маршруты:
-- `@get( "/redis", summary="Проверка подключения к Redis", description="Эндпоинт проверяет возможность подключения к Redis", tags=["Debug"], status_code=HTTP_200_OK, responses={ HTTP_200_OK: ResponseSpec( description="Redis подключен", data_container=None, examples=[ Example( value={"status": "ok", "redis": "connected"}, )`
+#### Маршрут:
+- **Декоратор:** @get
+- **Маршрут:** `/redis`
+- **Заголовок:** Проверка подключения к Redis
+- **Описание:** Эндпоинт проверяет возможность подключения к Redis
+- **Теги:** Debug
+
 
 ```python
 @get(
@@ -191,8 +211,13 @@ async def redis_health_check() -> JSONResponse:
 ---
 ## def all_services_health_check:
 #### Проверка подключения ко всем сервисам.
-#### Маршруты:
-- `@get( "/all", summary="Проверка подключения ко всем сервисам", description="Эндпоинт проверяет возможность подключения ко всем сервисам (MongoDB, MinIO, Redis)", tags=["Debug"], status_code=HTTP_200_OK, responses={ HTTP_200_OK: ResponseSpec( description="Все сервисы подключены", data_container=None, examples=[ Example( value={ "status": "ok", "mongodb": "connected", "minio": "connected", "redis": "connected", }, )`
+#### Маршрут:
+- **Декоратор:** @get
+- **Маршрут:** `/all`
+- **Заголовок:** Проверка подключения ко всем сервисам
+- **Описание:** Эндпоинт проверяет возможность подключения ко всем сервисам (MongoDB, MinIO, Redis)
+- **Теги:** Debug
+
 
 ```python
 @get(

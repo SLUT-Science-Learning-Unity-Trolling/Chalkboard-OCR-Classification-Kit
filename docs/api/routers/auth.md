@@ -4,8 +4,13 @@
 
 ## def auth_user:
 #### Эндпоинт для авторизации пользователя с установкой PASETO в cookie.
-#### Маршруты:
-- `@post( "/login", summary="Авторизация пользователя", description="Эндпоинт для авторизации пользователя с установкой Paseto в cookie." "Принимает email или username и пароль, возвращает данные пользователя и устанавливает access и refresh токены в cookie.", tags=["Авторизация"], status_code=HTTP_200_OK, dto=DataclassDTO[UserLoginDTO], return_dto=DataclassDTO[UserDTO], responses={ HTTP_200_OK: ResponseSpec( description="Пользователь авторизован", data_container=UserDTO, examples=[ Example( value={ "id": "694de2b36e5be2ab74f350e6", "username": "User123", "email": "user@example.com", }, )`
+#### Маршрут:
+- **Декоратор:** @post
+- **Маршрут:** `/login`
+- **Заголовок:** Авторизация пользователя
+- **Описание:** Эндпоинт для авторизации пользователя с установкой Paseto в cookie.Принимает email или username и пароль, возвращает данные пользователя и устанавливает access и refresh токены в cookie.
+- **Теги:** Авторизация
+
 
 #### Аргументы
 | Аргумент | Тип | Описание |
@@ -142,9 +147,28 @@ async def auth_user(
 ---
 ## def logout_user:
 #### Эндпоинт выхода из профиля.
-Удаляет PASETO из cookie и заносит refresh (и access) токены в blacklist.
-#### Маршруты:
-- `@post( "/logout", summary="Выход из профиля", description="Эндпоинт выхода из профиля. Удаляет Paseto из cookie", tags=["Авторизация"], status_code=HTTP_200_OK, responses={ HTTP_200_OK: ResponseSpec( description="Пользователь успешно вышел из аккаунта", data_container=None, ), }, )`
+
+Производит:
+- Удаление access и refresh токенов из cookie.
+- Добавление токенов в blacklist на сервере.
+#### Маршрут:
+- **Декоратор:** @post
+- **Маршрут:** `/logout`
+- **Заголовок:** Выход из профиля
+- **Описание:** Эндпоинт выхода из профиля. Удаляет Paseto из cookie
+- **Теги:** Авторизация
+
+
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `request` | `Request` | HTTP-запрос. |
+| `container` | `Container` | DI-контейнер для получения сервисов. |
+
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `Response` | Подтверждение успешного выхода с удалением cookie. |
 
 ```python
 @post(
@@ -163,7 +187,16 @@ async def auth_user(
 async def logout_user(request: Request, container: Container) -> Response:
     """Эндпоинт выхода из профиля.
 
-    Удаляет PASETO из cookie и заносит refresh (и access) токены в blacklist.
+    Производит:
+        - Удаление access и refresh токенов из cookie.
+        - Добавление токенов в blacklist на сервере.
+
+    Args:
+        request (Request): HTTP-запрос.
+        container (Container): DI-контейнер для получения сервисов.
+
+    Returns:
+        Response: Подтверждение успешного выхода с удалением cookie.
     """
     auth_service = container.resolve(AuthService)
 
@@ -195,9 +228,24 @@ async def logout_user(request: Request, container: Container) -> Response:
 ```
 ---
 ## def get_me:
-#### Эндпоинт возвращает данные текущего пользователя.
-#### Маршруты:
-- `@get( "/me", summary="Данные текущего пользователя", description="Эндпоинт возвращает данные текущего авторизованного пользователя", tags=["Debug", "Авторизация"], dependencies={"current_user": Provide(AuthService.get_current_user)}, status_code=HTTP_200_OK, responses={ HTTP_200_OK: ResponseSpec( description="Пользователь авторизован", data_container=UserDTO, examples=[ Example( value={ "id": "694de2b36e5be2ab74f350e6", "username": "User123", "email": "user@example.com", }, )`
+#### Эндпоинт возвращает информацию о текущем пользователе.
+#### Маршрут:
+- **Декоратор:** @get
+- **Маршрут:** `/me`
+- **Заголовок:** Данные текущего пользователя
+- **Описание:** Эндпоинт возвращает данные текущего авторизованного пользователя
+- **Теги:** Debug, Авторизация
+
+
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `current_user` | `UserDTO \| None` | Объект текущего пользователя, предоставляемый зависимостью. |
+
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `UserDTO` | Данные текущего авторизованного пользователя. |
 
 ```python
 @get(
@@ -246,15 +294,28 @@ async def logout_user(request: Request, container: Container) -> Response:
     },
 )
 async def get_me(current_user: UserDTO | None) -> UserDTO:
-    """Эндпоинт возвращает данные текущего пользователя."""
+    """Эндпоинт возвращает информацию о текущем пользователе.
+
+    Args:
+        current_user (UserDTO | None): Объект текущего пользователя, предоставляемый зависимостью.
+
+    Returns:
+        UserDTO: Данные текущего авторизованного пользователя.
+    """
     return current_user
 ```
 ---
 ## def refresh_user:
 #### Эндпоинт обновляет access токен по refresh токену.
+
 Получает refresh токен из cookie, проверяет его валидность и выдает новый access токен.
-#### Маршруты:
-- `@post( "/refresh", summary="Обновление access токена", description="Эндпоинт обновляет access токен по refresh токену", status_code=HTTP_200_OK, tags=["Авторизация"], responses={ HTTP_200_OK: ResponseSpec( description="Токены успешно обновлены", data_container=None, ), HTTP_401_UNAUTHORIZED: ResponseSpec( description="Невалидный refresh токен", data_container=ProblemDetailsDTO, examples=[ Example( value=ErrorCodes.AUTHENTICATION_ERROR.example( "Невалидный или просроченный refresh токен" ), )`
+#### Маршрут:
+- **Декоратор:** @post
+- **Маршрут:** `/refresh`
+- **Заголовок:** Обновление access токена
+- **Описание:** Эндпоинт обновляет access токен по refresh токену
+- **Теги:** Авторизация
+
 
 #### Аргументы
 | Аргумент | Тип | Описание |
@@ -266,12 +327,6 @@ async def get_me(current_user: UserDTO | None) -> UserDTO:
 | Тип | Описание |
 |-----|----------|
 | `Response` | Ответ с новым access токеном в cookie |
-
-#### Исключения
-| Исключение | Описание |
-|------------|----------|
-| `HTTPException` | 401 если refresh токен не валиден или отсутствует |
-| `HTTPException` | 429 если слишком много попыток обновления токенов |
 
 ```python
 @post(
@@ -320,10 +375,6 @@ async def refresh_user(request: Request, container: Container) -> Response:
 
     Returns:
         Response: Ответ с новым access токеном в cookie
-
-    Raises:
-        HTTPException: 401 если refresh токен не валиден или отсутствует
-        HTTPException: 429 если слишком много попыток обновления токенов
     """
     auth_service = container.resolve(AuthService)
 

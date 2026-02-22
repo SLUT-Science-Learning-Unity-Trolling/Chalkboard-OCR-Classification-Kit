@@ -3,9 +3,30 @@
 Модуль содержит эндпоинты для работы с пользователями.
 
 ## def create_user:
-#### Запрос на создание нового пользователя.
-#### Маршруты:
-- `@post( "/create", summary="Создание пользователя", description="Эндпоинт регистрации нового пользователя.", tags=["Пользователь"], status_code=HTTP_201_CREATED, dto=DataclassDTO[UserCreateDTO], return_dto=DataclassDTO[UserDTO], responses={ HTTP_201_CREATED: ResponseSpec( description="Пользователь успешно создан", data_container=UserDTO, ), HTTP_400_BAD_REQUEST: ResponseSpec( description="Ошибка валидации данных", data_container=ProblemDetailsDTO, examples=[ Example( value=ErrorCodes.VALIDATION_ERROR.example( "Email уже используется или данные невалидны" ), )`
+#### Создание нового пользователя.
+
+Выполняет:
+- Валидацию входных данных.
+- Создание пользователя в БД.
+- Преобразование результата в DTO.
+#### Маршрут:
+- **Декоратор:** @post
+- **Маршрут:** `/create`
+- **Заголовок:** Создание пользователя
+- **Описание:** Эндпоинт регистрации нового пользователя.
+- **Теги:** Пользователь
+
+
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `data` | `UserCreateDTO` | Данные нового пользователя (username, email, password, repeat_password). |
+| `container` | `Container` | DI-контейнер для получения сервисов (UserService). |
+
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `UserDTO` | Объект созданного пользователя. |
 
 ```python
 @post(
@@ -49,7 +70,20 @@ async def create_user(
     data: UserCreateDTO,
     container: Container,
 ) -> UserDTO:
-    """Запрос на создание нового пользователя."""
+    """Создание нового пользователя.
+
+    Выполняет:
+        - Валидацию входных данных.
+        - Создание пользователя в БД.
+        - Преобразование результата в DTO.
+
+    Args:
+        data (UserCreateDTO): Данные нового пользователя (username, email, password, repeat_password).
+        container (Container): DI-контейнер для получения сервисов (UserService).
+
+    Returns:
+        UserDTO: Объект созданного пользователя.
+    """
     user_service = container.resolve(UserService)
 
     user: User = await user_service.create_user(
@@ -64,9 +98,28 @@ async def create_user(
 ```
 ---
 ## def upload_image:
-#### Запрос на загрузку изображения для текущего пользователя.
-#### Маршруты:
-- `@post( "/upload_image", summary="Загрузка изображения", description="Загрузка изображения текущего пользователя.", tags=["Пользователь"], status_code=HTTP_201_CREATED, return_dto=DataclassDTO[ImageDTO], dependencies={"current_user": Provide(AuthService.get_current_user)}, responses={ HTTP_201_CREATED: ResponseSpec( description="Изображение успешно загружено", data_container=ImageDTO, ), HTTP_400_BAD_REQUEST: ResponseSpec( description="Ошибка загрузки изображения", data_container=ProblemDetailsDTO, examples=[ Example( value=ErrorCodes.IMAGE_UPLOAD_ERROR.example( "Недопустимое расширение файла или ошибка загрузки" ), )`
+#### Загрузка изображения для текущего пользователя.
+
+Принимает один файл изображения и сохраняет его в систему хранения.
+#### Маршрут:
+- **Декоратор:** @post
+- **Маршрут:** `/upload_image`
+- **Заголовок:** Загрузка изображения
+- **Описание:** Загрузка изображения текущего пользователя.
+- **Теги:** Пользователь
+
+
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `container` | `Container` | DI-контейнер для получения сервисов (UserService). |
+| `current_user` | `UserDTO` | Текущий авторизованный пользователь. |
+| `data` | `UploadFile` | Загруженный файл изображения. |
+
+#### Возвращает
+| Тип | Описание |
+|-----|----------|
+| `ImageDTO` | DTO загруженного изображения, включая URL и идентификатор. |
 
 ```python
 @post(
@@ -122,7 +175,18 @@ async def upload_image(
     current_user: UserDTO,
     data: Annotated[UploadFile, Body(media_type=RequestEncodingType.MULTI_PART)],
 ) -> ImageDTO:
-    """Запрос на загрузку изображения для текущего пользователя."""
+    """Загрузка изображения для текущего пользователя.
+
+    Принимает один файл изображения и сохраняет его в систему хранения.
+
+    Args:
+        container (Container): DI-контейнер для получения сервисов (UserService).
+        current_user (UserDTO): Текущий авторизованный пользователь.
+        data (UploadFile): Загруженный файл изображения.
+
+    Returns:
+        ImageDTO: DTO загруженного изображения, включая URL и идентификатор.
+    """
     user_service = container.resolve(UserService)
 
     image: UploadedImage = await user_service.upload_image(
@@ -138,8 +202,13 @@ async def upload_image(
 ---
 ## def get_all_user_images:
 #### Запрос всех изображений текущего пользователя.
-#### Маршруты:
-- `@get( "/get_all_user_images", summary="Получение всех изображений пользователя", description="Возвращает список изображений текущего пользователя.", tags=["Пользователь"], status_code=HTTP_200_OK, return_dto=DataclassDTO[ImageDTO], dependencies={"current_user": Provide(AuthService.get_current_user)}, responses={ HTTP_200_OK: ResponseSpec( description="Список изображений пользователя", data_container=ImageDTO, ), HTTP_401_UNAUTHORIZED: ResponseSpec( description="Пользователь не авторизован", data_container=ProblemDetailsDTO, examples=[ Example( value=ErrorCodes.AUTHENTICATION_ERROR.example( "Пользователь не авторизован или сессия истекла" ), )`
+#### Маршрут:
+- **Декоратор:** @get
+- **Маршрут:** `/get_all_user_images`
+- **Заголовок:** Получение всех изображений пользователя
+- **Описание:** Возвращает список изображений текущего пользователя.
+- **Теги:** Пользователь
+
 
 #### Аргументы
 | Аргумент | Тип | Описание |
@@ -222,14 +291,19 @@ async def get_all_user_images(
 ---
 ## def delete_image:
 #### Удаляет изображение текущего пользователя по URL.
-#### Маршруты:
-- `@delete( "/delete_image", summary="Удаление изображения", description="Удаляет изображение текущего пользователя по URL.", tags=["Пользователь"], status_code=HTTP_200_OK, dependencies={"current_user": Provide(AuthService.get_current_user)}, responses={ HTTP_200_OK: ResponseSpec( description="Изображение успешно удалено", data_container=None, ), HTTP_400_BAD_REQUEST: ResponseSpec( description="Ошибка удаления изображения", data_container=ProblemDetailsDTO, examples=[ Example( value=ErrorCodes.IMAGE_DELETION_ERROR.example( "Не удалось удалить изображение" ), )`
+#### Маршрут:
+- **Декоратор:** @delete
+- **Маршрут:** `/delete_image`
+- **Заголовок:** Удаление изображения
+- **Описание:** Удаляет изображение текущего пользователя по URL.
+- **Теги:** Пользователь
+
 
 #### Аргументы
 | Аргумент | Тип | Описание |
 |----------|-----|----------|
 | `container` | `Container` | Контейнер зависимостей для получения сервисов. |
-| `current_user` | `UserDTO | None` | Текущий авторизованный пользователь или None, если не авторизован. |
+| `current_user` | `UserDTO \| None` | Текущий авторизованный пользователь или None, если не авторизован. |
 | `url` | `str` | URL изображения для удаления. |
 
 #### Возвращает

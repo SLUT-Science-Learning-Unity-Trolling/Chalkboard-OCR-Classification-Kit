@@ -40,16 +40,22 @@ nav:
           - Auth Service: core/services/auth_service.md
           - Security Service: core/services/security_service.md
           - Validation Service: core/services/validation_service.md
+          - OCR Service: core/services/ocr_service.md
       - Errors:
           - Auth Errors: core/errors/auth.md
           - User Errors: core/errors/user.md
           - Security Errors: core/errors/security.md
           - Validation Errors: core/errors/validation.md
+      - Middleware:
+          - API Monitoring: core/middleware/api_monitoring.md
+          - Paseto Refresh: core/middleware/paseto_refresh.md
+          - Rate Limit: core/middleware/rate_limit.md
   - API:
       - Routers:
           - Auth: api/routers/auth.md
           - User: api/routers/user.md
           - Health: api/routers/health.md
+          - OCR: api/routers/ocr.md
       - Schemas:
           - User DTO: api/schemas/user_dto.md
           - Image DTO: api/schemas/image_dto.md
@@ -73,7 +79,7 @@ nav:
           - Database Interface: adapters/interfaces/db.md
           - Minio Interface: adapters/interfaces/s3.md
   - Monitoring:
-      - API Monitor: app/monitoring/api_monitor.md
+      - API Monitor: monitoring/api_monitor.md
   - Main: main.md
   - Container: container.md
   - Config: config.md

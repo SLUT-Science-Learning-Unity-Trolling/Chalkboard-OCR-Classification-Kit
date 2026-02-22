@@ -10,7 +10,6 @@ from litestar.datastructures import UploadFile
 from litestar.di import Provide
 from litestar.dto import DataclassDTO
 from litestar.enums import RequestEncodingType
-from litestar.exceptions import HTTPException
 from litestar.openapi import ResponseSpec
 from litestar.openapi.spec import Example
 from litestar.params import Body
@@ -29,18 +28,6 @@ from app.api.schemas.image_dto import ImageDTO
 from app.api.schemas.user_dto import UserCreateDTO, UserDTO
 from app.core.domain.models.image import UploadedImage
 from app.core.domain.models.user import User
-from app.core.errors.auth import (
-    EmailAlreadyTakenError,
-    EmailValidationError,
-    PasswordDontMatchError,
-    UsernameAlreadyTakenError,
-)
-from app.core.errors.user import DeleteImageError, ImageUploadError
-from app.core.errors.validation import (
-    ImageExtensionValidationError,
-    PasswordValidationError,
-    UsernameValidationError,
-)
 from app.core.services.auth_service import AuthService
 from app.core.services.user_service import UserService
 
@@ -86,7 +73,20 @@ async def create_user(
     data: UserCreateDTO,
     container: Container,
 ) -> UserDTO:
-    """Запрос на создание нового пользователя."""
+    """Создание нового пользователя.
+
+    Выполняет:
+        - Валидацию входных данных.
+        - Создание пользователя в БД.
+        - Преобразование результата в DTO.
+
+    Args:
+        data (UserCreateDTO): Данные нового пользователя (username, email, password, repeat_password).
+        container (Container): DI-контейнер для получения сервисов (UserService).
+
+    Returns:
+        UserDTO: Объект созданного пользователя.
+    """
     user_service = container.resolve(UserService)
 
     user: User = await user_service.create_user(
@@ -152,7 +152,18 @@ async def upload_image(
     current_user: UserDTO,
     data: Annotated[UploadFile, Body(media_type=RequestEncodingType.MULTI_PART)],
 ) -> ImageDTO:
-    """Запрос на загрузку изображения для текущего пользователя."""
+    """Загрузка изображения для текущего пользователя.
+
+    Принимает один файл изображения и сохраняет его в систему хранения.
+
+    Args:
+        container (Container): DI-контейнер для получения сервисов (UserService).
+        current_user (UserDTO): Текущий авторизованный пользователь.
+        data (UploadFile): Загруженный файл изображения.
+
+    Returns:
+        ImageDTO: DTO загруженного изображения, включая URL и идентификатор.
+    """
     user_service = container.resolve(UserService)
 
     image: UploadedImage = await user_service.upload_image(
