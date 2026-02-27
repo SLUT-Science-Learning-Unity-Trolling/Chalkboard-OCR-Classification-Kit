@@ -1,7 +1,6 @@
 """Модуль содержит класс AuthService для аутентификации пользователей."""
 # AuthService
 
-
 import secrets
 
 import paseto
@@ -57,7 +56,6 @@ class AuthService:
         self._redis_blacklist = redis_blacklist_repo
         self._redis_rate_limit = redis_rate_limit_repo
 
-
     async def auth_existing_user(
         self, identifier: str, password: str, client_ip: str
     ) -> tuple[UserDTO, str, str]:
@@ -88,9 +86,7 @@ class AuthService:
             query: dict[str, str] = {"email": identifier}
         else:
             self._validation.validate_credentials(
-                identifier=identifier,
-                password=password,
-                is_email=False
+                identifier=identifier, password=password, is_email=False
             )
             query: dict[str, str] = {"username": identifier}
 
@@ -168,10 +164,12 @@ class AuthService:
 
             user_id = claims["sub"]
             if not user_id:
-                raise InvalidTokenError("В токене отсутствует идентификатор пользователя.")
+                raise InvalidTokenError(
+                    "В токене отсутствует идентификатор пользователя."
+                )
 
         except Exception:
-            raise InvalidTokenError("Невалидный токен")
+            raise InvalidTokenError("Невалидный токен") from None
 
         user_service = container.resolve(UserService)
         user = await user_service.get_user_by_id(user_id)
@@ -276,7 +274,9 @@ class AuthService:
 
         return new_access, new_refresh
 
-    async def _blacklist_token(self, token: str, expected_type: str, expires_in: int) -> None:
+    async def _blacklist_token(
+        self, token: str, expected_type: str, expires_in: int
+    ) -> None:
         """Добавляет PASETO токен в черный список по jti.
 
         Проверяет тип токена и сохраняет jti в RedisBlacklistRepo.
@@ -296,6 +296,8 @@ class AuthService:
             if claims.get("type") == expected_type:
                 jti = claims.get("jti")
                 if jti and self._redis_blacklist:
-                    await self._redis_blacklist.add_to_blacklist(jti, expires_in=expires_in)
+                    await self._redis_blacklist.add_to_blacklist(
+                        jti, expires_in=expires_in
+                    )
         except Exception:
-            raise InvalidTokenError("Refresh токен не валиден")
+            raise InvalidTokenError("Refresh токен не валиден") from None

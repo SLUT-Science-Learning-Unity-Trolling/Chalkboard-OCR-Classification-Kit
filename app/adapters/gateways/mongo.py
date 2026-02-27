@@ -5,7 +5,7 @@ from pymongo import AsyncMongoClient
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.database import Database
 
-from app.config import Config
+from app.config import config
 
 
 class MongoGateway:
@@ -24,10 +24,10 @@ class MongoGateway:
         Raises:
             ValueError: Если DATABASE_URL не установлен в конфигурации.
         """
-        self._uri = Config.DATABASE_URL
-        self._database = Config.DATABASE_NAME
-        self._username = Config.DATABASE_USER
-        self._password = Config.DATABASE_PASSWORD
+        self._uri = config.DATABASE_URL
+        self._database = config.DATABASE_NAME
+        self._username = config.DATABASE_USER
+        self._password = config.DATABASE_PASSWORD
         self._client: AsyncMongoClient | None = None
 
         if not self._uri:
@@ -55,4 +55,4 @@ class MongoGateway:
     async def close(self) -> None:
         """Закрывает соединение с MongoDB."""
         if self._client:
-            self._client.close()
+            await self._client.close()

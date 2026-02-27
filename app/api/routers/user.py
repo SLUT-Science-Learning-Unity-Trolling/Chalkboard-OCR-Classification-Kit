@@ -22,8 +22,7 @@ from litestar.status_codes import (
 )
 from punq import Container
 
-from app.api.exceptions.problem_details_dto import ProblemDetailsDTO
-from app.api.exceptions.problem_factory import ErrorCodes
+from app.api.exceptions.problem_factory import ErrorCode, ErrorMeta, problem_factory
 from app.api.schemas.image_dto import ImageDTO
 from app.api.schemas.user_dto import UserCreateDTO, UserDTO
 from app.core.domain.models.image import UploadedImage
@@ -47,22 +46,24 @@ from app.core.services.user_service import UserService
         ),
         HTTP_400_BAD_REQUEST: ResponseSpec(
             description="Ошибка валидации данных",
-            data_container=ProblemDetailsDTO,
+            data_container=ErrorMeta,
             examples=[
                 Example(
-                    value=ErrorCodes.VALIDATION_ERROR.example(
-                        "Email уже используется или данные невалидны"
+                    value=problem_factory.build(
+                        error=ErrorCode.VALIDATION_ERROR,
+                        detail="Email уже используется или данные невалидны",
                     ),
                 )
             ],
         ),
         HTTP_429_TOO_MANY_REQUESTS: ResponseSpec(
             description="Слишком много запросов",
-            data_container=ProblemDetailsDTO,
+            data_container=ErrorMeta,
             examples=[
                 Example(
-                    value=ErrorCodes.TOO_MANY_REQUESTS_ERROR.example(
-                        "Слишком много попыток авторизации. Попробуйте позже."
+                    value=problem_factory.build(
+                        error=ErrorCode.TOO_MANY_REQUESTS,
+                        detail="Слишком много попыток авторизации. Попробуйте позже.",
                     ),
                 )
             ],
@@ -99,6 +100,7 @@ async def create_user(
     user_dto = UserDTO.fromrow(user.__dict__)
     return user_dto.__dict__
 
+
 @post(
     "/upload_image",
     summary="Загрузка изображения",
@@ -114,33 +116,36 @@ async def create_user(
         ),
         HTTP_400_BAD_REQUEST: ResponseSpec(
             description="Ошибка загрузки изображения",
-            data_container=ProblemDetailsDTO,
+            data_container=ErrorMeta,
             examples=[
                 Example(
-                    value=ErrorCodes.IMAGE_UPLOAD_ERROR.example(
-                        "Недопустимое расширение файла или ошибка загрузки"
+                    value=problem_factory.build(
+                        error=ErrorCode.IMAGE_UPLOAD_ERROR,
+                        detail="Недопустимое расширение файла или ошибка загрузки",
                     ),
                 )
             ],
         ),
         HTTP_401_UNAUTHORIZED: ResponseSpec(
             description="Пользователь не авторизован",
-            data_container=ProblemDetailsDTO,
+            data_container=ErrorMeta,
             examples=[
                 Example(
-                    value=ErrorCodes.AUTHENTICATION_ERROR.example(
-                        "Пользователь не авторизован или сессия истекла"
+                    value=problem_factory.build(
+                        error=ErrorCode.AUTHENTICATION_ERROR,
+                        detail="Пользователь не авторизован или сессия истекла",
                     ),
                 )
             ],
         ),
         HTTP_429_TOO_MANY_REQUESTS: ResponseSpec(
             description="Слишком много запросов",
-            data_container=ProblemDetailsDTO,
+            data_container=ErrorMeta,
             examples=[
                 Example(
-                    value=ErrorCodes.TOO_MANY_REQUESTS_ERROR.example(
-                        "Слишком много попыток авторизации. Попробуйте позже."
+                    value=problem_factory.build(
+                        error=ErrorCode.TOO_MANY_REQUESTS,
+                        detail="Слишком много попыток авторизации. Попробуйте позже.",
                     ),
                 )
             ],
@@ -192,22 +197,24 @@ async def upload_image(
         ),
         HTTP_401_UNAUTHORIZED: ResponseSpec(
             description="Пользователь не авторизован",
-            data_container=ProblemDetailsDTO,
+            data_container=ErrorMeta,
             examples=[
                 Example(
-                    value=ErrorCodes.AUTHENTICATION_ERROR.example(
-                        "Пользователь не авторизован или сессия истекла"
+                    value=problem_factory.build(
+                        error=ErrorCode.AUTHENTICATION_ERROR,
+                        detail="Пользователь не авторизован или сессия истекла",
                     ),
                 )
             ],
         ),
         HTTP_429_TOO_MANY_REQUESTS: ResponseSpec(
             description="Слишком много запросов",
-            data_container=ProblemDetailsDTO,
+            data_container=ErrorMeta,
             examples=[
                 Example(
-                    value=ErrorCodes.TOO_MANY_REQUESTS_ERROR.example(
-                        "Слишком много попыток авторизации. Попробуйте позже."
+                    value=problem_factory.build(
+                        error=ErrorCode.TOO_MANY_REQUESTS,
+                        detail="Слишком много попыток авторизации. Попробуйте позже.",
                     ),
                 )
             ],
@@ -253,33 +260,36 @@ async def get_all_user_images(
         ),
         HTTP_400_BAD_REQUEST: ResponseSpec(
             description="Ошибка удаления изображения",
-            data_container=ProblemDetailsDTO,
+            data_container=ErrorMeta,
             examples=[
                 Example(
-                    value=ErrorCodes.IMAGE_DELETION_ERROR.example(
-                        "Не удалось удалить изображение"
+                    value=problem_factory.build(
+                        error=ErrorCode.IMAGE_DELETION_ERROR,
+                        detail="Не удалось удалить изображение",
                     ),
                 )
             ],
         ),
         HTTP_401_UNAUTHORIZED: ResponseSpec(
             description="Пользователь не авторизован",
-            data_container=ProblemDetailsDTO,
+            data_container=ErrorMeta,
             examples=[
                 Example(
-                    value=ErrorCodes.AUTHENTICATION_ERROR.example(
-                        "Пользователь не авторизован или сессия истекла"
+                    value=problem_factory.build(
+                        error=ErrorCode.AUTHENTICATION_ERROR,
+                        detail="Пользователь не авторизован или сессия истекла",
                     ),
                 )
             ],
         ),
         HTTP_429_TOO_MANY_REQUESTS: ResponseSpec(
             description="Слишком много запросов",
-            data_container=ProblemDetailsDTO,
+            data_container=ErrorMeta,
             examples=[
                 Example(
-                    value=ErrorCodes.TOO_MANY_REQUESTS_ERROR.example(
-                        "Слишком много попыток авторизации. Попробуйте позже."
+                    value=problem_factory.build(
+                        error=ErrorCode.TOO_MANY_REQUESTS,
+                        detail="Слишком много попыток авторизации. Попробуйте позже.",
                     ),
                 )
             ],

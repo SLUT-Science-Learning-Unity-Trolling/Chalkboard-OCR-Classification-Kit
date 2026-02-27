@@ -68,10 +68,13 @@ class InvalidEmailOrPasswordError(Exception):
         super().__init__(message)
         self.message: str | Exception = message
 
+
 class UnauthorizedError(Exception):
     """Исключение, возникающее при неавторизованном доступе."""
 
-    def __init__(self, message: str | Exception = "Пользователь не авторизован.") -> None:
+    def __init__(
+        self, message: str | Exception = "Пользователь не авторизован."
+    ) -> None:
         """Конструктор.
 
         Args:
@@ -79,4 +82,3 @@ class UnauthorizedError(Exception):
         """
         super().__init__(message)
         self.message: str | Exception = message
-

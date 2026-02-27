@@ -42,6 +42,7 @@ def access_token_middleware(container: Container) -> Callable[[ASGIApp], ASGIApp
         Returns:
             ASGIApp: Обёрнутое приложение с подстановкой current_user.
         """
+
         async def middleware(scope: Scope, receive: Receive, send: Send) -> None:
             if scope["type"] != "http":
                 await app(scope, receive, send)

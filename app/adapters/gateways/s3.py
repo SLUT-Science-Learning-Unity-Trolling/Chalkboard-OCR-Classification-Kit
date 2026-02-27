@@ -7,7 +7,7 @@ from boto3 import client
 from botocore.exceptions import ClientError
 
 from app.adapters.interfaces.s3 import S3Interface
-from app.config import Config
+from app.config import config
 
 
 class MinioGateway(S3Interface):
@@ -23,10 +23,10 @@ class MinioGateway(S3Interface):
           self._bucket (str): Имя бакета в MiniO.
           self.connect(): Устанавливает соединение с MiniO.
         """
-        self._endpoint = Config.MINIO_ENDPOINT
-        self._access_key = Config.MINIO_ACCESS_KEY
-        self._secret_key = Config.MINIO_SECRET_KEY
-        self._bucket = Config.MINIO_BUCKET
+        self._endpoint = config.MINIO_ENDPOINT
+        self._access_key = config.MINIO_ACCESS_KEY
+        self._secret_key = config.MINIO_SECRET_KEY
+        self._bucket = config.MINIO_BUCKET
         self.connect()
 
     def connect(self) -> None:

@@ -1,12 +1,9 @@
 """Модуль содержит эндпоинты авторизации и выхода из профиля."""
 # API_Auth
 
-import paseto
-
 from litestar import Request, Response, Router, get, post
 from litestar.di import Provide
 from litestar.dto import DataclassDTO
-from litestar.exceptions import HTTPException
 from litestar.openapi import ResponseSpec
 from litestar.openapi.spec import Example
 from litestar.status_codes import (
@@ -18,13 +15,9 @@ from litestar.status_codes import (
 )
 from punq import Container
 
-from app.adapters.repositories.redis_blacklist_repo import RedisBlacklistRepo
-from app.api.exceptions.problem_details_dto import ProblemDetailsDTO
-from app.api.exceptions.problem_factory import ErrorCodes
+from app.api.exceptions.problem_factory import ErrorCode, ErrorMeta, problem_factory
 from app.api.schemas.user_dto import UserDTO, UserLoginDTO
-from app.config import config, token_key
-from app.core.errors.auth import InvalidEmailOrPasswordError, UnauthorizedError
-from app.core.errors.security import TooManyRequestsError
+from app.config import config
 from app.core.services.auth_service import AuthService
 
 
@@ -53,45 +46,48 @@ from app.core.services.auth_service import AuthService
         ),
         HTTP_401_UNAUTHORIZED: ResponseSpec(
             description="Неверные данные",
-            data_container=ProblemDetailsDTO,
+            data_container=ErrorMeta,
             examples=[
                 Example(
-                    value=ErrorCodes.AUTHENTICATION_ERROR.example(
-                        "Неверная почта/логин или пароль"
-                    ),
+                    value=problem_factory.build(
+                        error=ErrorCode.AUTHENTICATION_ERROR,
+                        detail="Неверная почта/логин или пароль",
+                    )
                 )
             ],
         ),
         HTTP_400_BAD_REQUEST: ResponseSpec(
             description="Невалидные данные",
-            data_container=ProblemDetailsDTO,
+            data_container=ErrorMeta,
             examples=[
                 Example(
-                    value=ErrorCodes.VALIDATION_ERROR.example(
-                        "Ошибка валидации данных"
-                    ),
+                    value=problem_factory.build(
+                        error=ErrorCode.VALIDATION_ERROR,
+                        detail="Ошибка валидации данных",
+                    )
                 )
             ],
         ),
         HTTP_500_INTERNAL_SERVER_ERROR: ResponseSpec(
             description="Внутренняя ошибка сервера",
-            data_container=ProblemDetailsDTO,
+            data_container=ErrorMeta,
             examples=[
                 Example(
-                    value=ErrorCodes.SERVICE_CONNECTION_ERROR.example(
-                        "Внутренняя ошибка сервера"
-                    ),
+                    value=problem_factory.build(
+                        error=ErrorCode.SERVER_ERROR, detail="Внутренняя ошибка сервера"
+                    )
                 )
             ],
         ),
         HTTP_429_TOO_MANY_REQUESTS: ResponseSpec(
             description="Слишком много запросов",
-            data_container=ProblemDetailsDTO,
+            data_container=ErrorMeta,
             examples=[
                 Example(
-                    value=ErrorCodes.TOO_MANY_REQUESTS_ERROR.example(
-                        "Слишком много попыток авторизации. Попробуйте позже."
-                    ),
+                    value=problem_factory.build(
+                        error=ErrorCode.TOO_MANY_REQUESTS,
+                        detail="Слишком много попыток авторизации. Попробуйте позже.",
+                    )
                 )
             ],
         ),
@@ -227,22 +223,24 @@ async def logout_user(request: Request, container: Container) -> Response:
         ),
         HTTP_401_UNAUTHORIZED: ResponseSpec(
             description="Пользователь не авторизован",
-            data_container=ProblemDetailsDTO,
+            data_container=ErrorMeta,
             examples=[
                 Example(
-                    value=ErrorCodes.AUTHORIZATION_ERROR.example(
-                        "Пользователь не авторизован или сессия истекла"
+                    value=problem_factory.build(
+                        error=ErrorCode.AUTHORIZATION_ERROR,
+                        detail="Пользователь не авторизован или сессия истекла",
                     ),
                 )
             ],
         ),
         HTTP_429_TOO_MANY_REQUESTS: ResponseSpec(
             description="Слишком много запросов",
-            data_container=ProblemDetailsDTO,
+            data_container=ErrorMeta,
             examples=[
                 Example(
-                    value=ErrorCodes.TOO_MANY_REQUESTS_ERROR.example(
-                        "Слишком много попыток авторизации. Попробуйте позже."
+                    value=problem_factory.build(
+                        error=ErrorCode.TOO_MANY_REQUESTS,
+                        detail="Слишком много попыток авторизации. Попробуйте позже.",
                     ),
                 )
             ],
@@ -274,22 +272,24 @@ async def get_me(current_user: UserDTO | None) -> UserDTO:
         ),
         HTTP_401_UNAUTHORIZED: ResponseSpec(
             description="Невалидный refresh токен",
-            data_container=ProblemDetailsDTO,
+            data_container=ErrorMeta,
             examples=[
                 Example(
-                    value=ErrorCodes.AUTHENTICATION_ERROR.example(
-                        "Невалидный или просроченный refresh токен"
+                    value=problem_factory.build(
+                        error=ErrorCode.AUTHENTICATION_ERROR,
+                        detail="Невалидный или просроченный refresh токен",
                     ),
                 )
             ],
         ),
         HTTP_429_TOO_MANY_REQUESTS: ResponseSpec(
             description="Слишком много попыток авторизации",
-            data_container=ProblemDetailsDTO,
+            data_container=ErrorMeta,
             examples=[
                 Example(
-                    value=ErrorCodes.TOO_MANY_REQUESTS_ERROR.example(
-                        "Слишком много попыток обновления токенов. Попробуйте позже."
+                    value=problem_factory.build(
+                        error=ErrorCode.TOO_MANY_REQUESTS,
+                        detail="Слишком много попыток обновления токенов. Попробуйте позже.",
                     ),
                 )
             ],

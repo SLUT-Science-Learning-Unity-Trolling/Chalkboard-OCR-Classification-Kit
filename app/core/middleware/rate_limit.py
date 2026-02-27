@@ -1,7 +1,6 @@
 """Middleware для rate limiting."""
 
 from collections.abc import Callable
-from typing import Optional
 
 from litestar.connection import Request
 from litestar.types import ASGIApp, Receive, Scope, Send
@@ -43,6 +42,7 @@ def rate_limit_middleware(container: Container) -> Callable[[ASGIApp], ASGIApp]:
         Returns:
             ASGIApp: Обёрнутое приложение с проверкой лимитов запросов.
         """
+
         async def middleware(scope: Scope, receive: Receive, send: Send) -> None:
             if scope["type"] != "http":
                 await app(scope, receive, send)
@@ -57,13 +57,19 @@ def rate_limit_middleware(container: Container) -> Callable[[ASGIApp], ASGIApp]:
             redis_rate_limit: RedisRateLimitRepo = container.resolve(RedisRateLimitRepo)
 
             client_ip: str | None = None
-            client_ip = getattr(request.client, "host", None) if getattr(request, "client", None) else None
+            client_ip = (
+                getattr(request.client, "host", None)
+                if getattr(request, "client", None)
+                else None
+            )
             if not client_ip:
                 xff = request.headers.get("x-forwarded-for")
                 if xff:
                     client_ip = xff.split(",")[0].strip()
                 else:
-                    client_ip = scope.get("client")[0] if scope.get("client") else "unknown"
+                    client_ip = (
+                        scope.get("client")[0] if scope.get("client") else "unknown"
+                    )
 
             path = scope.get("path", "")
             if path.startswith("/auth/login"):
@@ -82,7 +88,9 @@ def rate_limit_middleware(container: Container) -> Callable[[ASGIApp], ASGIApp]:
                 return
 
             if not allowed:
-                raise TooManyRequestsError("Превышен лимит запросов", retry_after=retry_after)
+                raise TooManyRequestsError(
+                    "Превышен лимит запросов", retry_after=retry_after
+                )
 
             await app(scope, receive, send)
 

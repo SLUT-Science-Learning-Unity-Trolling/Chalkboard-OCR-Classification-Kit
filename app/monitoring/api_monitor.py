@@ -1,4 +1,5 @@
 """Функция для мониторинга скорости API."""
+
 from __future__ import annotations
 
 import logging
@@ -28,7 +29,6 @@ class ApiMonitor:
     """Простой монитор API запросов с логированием в файл.
 
     Позволяет:
-    
         - Считать общее количество запросов.
         - Собирать статистику по пути запроса, HTTP-методу и статусу ответа.
         - Хранить замеры времени обработки (latency) по каждому пути.
@@ -87,7 +87,8 @@ class ApiMonitor:
         """
         with self._lock:
             avg_latency = {
-                p: (sum(lst) / len(lst)) if lst else 0.0 for p, lst in self.latencies.items()
+                p: (sum(lst) / len(lst)) if lst else 0.0
+                for p, lst in self.latencies.items()
             }
             return {
                 "total": self.total_requests,

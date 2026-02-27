@@ -23,6 +23,7 @@ class UserCreateDTO:
     password: str
     repeat_password: str
 
+
 @dataclass()
 class UserDTO:
     """Данные о пользователе, возвращаемые пользователю.
@@ -53,6 +54,7 @@ class UserDTO:
             email=row["email"],
         )
 
+
 @dataclass(slots=True, kw_only=True)
 class UserLoginDTO:
     """Данные для авторизации пользователя.
@@ -64,4 +66,3 @@ class UserLoginDTO:
 
     identifier: str
     password: str
-
