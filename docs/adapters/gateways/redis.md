@@ -45,7 +45,7 @@ class RedisGateway:
                 decode_responses=True,
             )
         try:
-            pong = await self._client.ping()
+            pong: bool = self._client.ping()
             if not pong:
                 raise ConnectionError("Redis did not respond to PING")
         except Exception as e:
@@ -56,7 +56,7 @@ class RedisGateway:
 #### Возвращает клиент Redis, подключаясь при необходимости.
 
 ```python
-    async def get_connection(self) -> redis.Redis:
+    async def get_connection(self) -> redis.Redis | None:
         """Возвращает клиент Redis, подключаясь при необходимости."""
         if not self._client:
             await self.connect()

@@ -50,13 +50,15 @@ def build_container() -> Container:
             typ (type): Класс шлюза
             factory (Any): Функция для создания экземпляра шлюза
         """
-        container.register(typ, factory=factory, scope="singleton")
+        container.register(typ, factory=factory, scope=Scope.singleton)
 
     register_gateway_singleton(MongoGateway, factory=lambda: MongoGateway())
 
     register_gateway_singleton(MinioGateway, factory=lambda: MinioGateway())
 
-    def register_redis_pair(db_index: int, gateway_name_suffix: str, repo_cls: Any) -> None:
+    def register_redis_pair(
+        db_index: int, gateway_name_suffix: str, repo_cls: Any
+    ) -> None:
         """Регистрация пары Redis: шлюз + репозиторий.
 
         Позволяет разделять БД Redis для разных целей (черный список токенов и
@@ -67,11 +69,17 @@ def build_container() -> Container:
             gateway_name_suffix (str): Суффикс для создания уникального класса шлюза
             repo_cls (Any): Класс репозитория, который использует этот шлюз
         """
-        gateway_type = type(f"RedisGatewayDb{db_index}_{gateway_name_suffix}", (RedisGateway,), {})
-        register_gateway_singleton(gateway_type, factory=lambda db=db_index: RedisGateway(db=db))
+        gateway_type = type(
+            f"RedisGatewayDb{db_index}_{gateway_name_suffix}", (RedisGateway,), {}
+        )
+        register_gateway_singleton(
+            gateway_type, factory=lambda db=db_index: RedisGateway(db=db)
+        )
         container.register(
             repo_cls,
-            factory=lambda gw_type=gateway_type: repo_cls(gateway=container.resolve(gw_type))
+            factory=lambda gw_type=gateway_type: repo_cls(
+                gateway=container.resolve(gw_type)
+            ),
         )
 
     register_redis_pair(0, "blacklist", RedisBlacklistRepo)
@@ -87,7 +95,7 @@ def build_container() -> Container:
         container.register(
             interface,
             factory=lambda coll=collection_name: MongoRepo(
-                gateway=container.resolve(MongoGateway),
+                gateway=container.resolve(MongoGateway),  # type: ignore
                 collection_name=coll,
             ),
         )
@@ -95,34 +103,36 @@ def build_container() -> Container:
     register_mongo_repo(UserRepo, "users")
     register_mongo_repo(ImageRepo, "images")
 
-    container.register(SecurityService, factory=lambda: SecurityService(), scope="singleton")
-    container.register(ValidationService, factory=lambda: ValidationService(), scope="singleton")
+    container.register(SecurityService, SecurityService, scope=Scope.singleton)
+    container.register(ValidationService, ValidationService, scope=Scope.singleton)
+    container.register(ImageValidator, ImageValidator, scope=Scope.singleton)
 
     container.register(
         UserService,
         factory=lambda: UserService(
-            user_repo=container.resolve(UserRepo),
-            image_repo=container.resolve(ImageRepo),
-            security=container.resolve(SecurityService),
-            validator=container.resolve(ValidationService),
-            storage=container.resolve(MinioGateway),
+            user_repo=container.resolve(UserRepo),  # type: ignore
+            image_repo=container.resolve(ImageRepo),  # type: ignore
+            security=container.resolve(SecurityService),  # type: ignore
+            validator=container.resolve(ValidationService),  # type: ignore
+            image_validator=container.resolve(ImageValidator),  # type: ignore
+            storage=container.resolve(MinioGateway),  # type: ignore
         ),
     )
 
     container.register(
         AuthService,
         factory=lambda: AuthService(
-            repository=container.resolve(UserRepo),
-            security=container.resolve(SecurityService),
-            validation=container.resolve(ValidationService),
-            redis_blacklist_repo=container.resolve(RedisBlacklistRepo),
-            redis_rate_limit_repo=container.resolve(RedisRateLimitRepo),
+            repository=container.resolve(UserRepo),  # type: ignore
+            security=container.resolve(SecurityService),  # type: ignore
+            validation=container.resolve(ValidationService),  # type: ignore
+            redis_blacklist_repo=container.resolve(RedisBlacklistRepo),  # type: ignore
+            redis_rate_limit_repo=container.resolve(RedisRateLimitRepo),  # type: ignore
         ),
     )
 
-    container.register("config", instance=Config())
+    container.register(Config, instance=Config())
 
-    container.register(ApiMonitor, ApiMonitor, scope="singleton")
+    container.register(ApiMonitor, ApiMonitor, scope=Scope.singleton)
 
     return container
 ```

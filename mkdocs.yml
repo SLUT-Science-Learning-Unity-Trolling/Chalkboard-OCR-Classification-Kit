@@ -50,6 +50,8 @@ nav:
           - API Monitoring: core/middleware/api_monitoring.md
           - Paseto Refresh: core/middleware/paseto_refresh.md
           - Rate Limit: core/middleware/rate_limit.md
+      - Utils:
+          - Utils: core/utils/utils.py
   - API:
       - Routers:
           - Auth: api/routers/auth.md
@@ -61,7 +63,6 @@ nav:
           - Image DTO: api/schemas/image_dto.md
       - Exceptions:
           - Handlers: api/exceptions/handlers.md
-          - Problem Details DTO: api/exceptions/problem_details_dto.md
           - Problem Factory: api/exceptions/problem_factory.md
   - Adapters:
       - Gateways:

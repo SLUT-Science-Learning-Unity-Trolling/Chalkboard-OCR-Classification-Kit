@@ -93,6 +93,38 @@ class ImageExtensionValidationError(Exception):
         self.message: str | Exception = message
 ```
 ---
+## Класс ImageValidationError
+
+**Исключение, возникающее при ошибке при валидации изображения.**
+
+```python
+class ImageValidationError(Exception):
+    """Исключение, возникающее при ошибке при валидации изображения."""
+```
+
+---
+## def init:
+#### Конструктор.
+
+#### Аргументы
+| Аргумент | Тип | Описание |
+|----------|-----|----------|
+| `message` | `str \| Exception` | Сообщение об ошибке". (optional) |
+
+```python
+    def __init__(
+        self,
+        message: str | Exception = "Ошибка валидации изображения",
+    ) -> None:
+        """Конструктор.
+
+        Args:
+            message (str | Exception, optional): Сообщение об ошибке".
+        """
+        super().__init__(message)
+        self.message: str | Exception = message
+```
+---
 ## Класс ImageNotFoundError
 
 **Исключение, возникающее при невалидном расширении картинки.**
@@ -141,7 +173,10 @@ class IdentificatorIsNullError(Exception):
 | `message` | `str \| Exception` | Сообщение об ошибке". (optional) |
 
 ```python
-    def __init__(self, message: str | Exception = "Имя пользователя или почта не должны быть пустыми") -> None:
+    def __init__(
+        self,
+        message: str | Exception = "Имя пользователя или почта не должны быть пустыми",
+    ) -> None:
         """Конструктор.
 
         Args:

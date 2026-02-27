@@ -19,13 +19,19 @@ class TooManyRequestsError(Exception):
 | Аргумент | Тип | Описание |
 |----------|-----|----------|
 | `message` | `str \| Exception` | Сообщение об ошибке". (optional) |
+| `retry_after` | `int \| None` | Время ожидания перед повторным запросом. (optional) |
 
 ```python
-    def __init__(self, message: str | Exception = "Превышен лимит запросов.", retry_after: int | None = None) -> None:
+    def __init__(
+        self,
+        message: str | Exception = "Превышен лимит запросов.",
+        retry_after: int | None = None,
+    ) -> None:
         """Конструктор.
 
         Args:
             message (str | Exception, optional): Сообщение об ошибке".
+            retry_after (int | None, optional): Время ожидания перед повторным запросом.
         """
         super().__init__(message)
         self.message = message

@@ -22,6 +22,7 @@ class UserService:
 | `image_repo` | `RepositoryInterface` | Репозиторий изображений |
 | `security` | `SecurityService` | Секьюрити сервис |
 | `validator` | `ValidationService` | Сервис валидации |
+| `image_validator` | `ImageValidator` | Сервис валидации изображений |
 | `storage` | `MinioGateway` | Сервис хранилища |
 
 ```python
@@ -31,6 +32,7 @@ class UserService:
         image_repo: RepositoryInterface,
         security: SecurityService,
         validator: ValidationService,
+        image_validator: ImageValidator,
         storage: MinioGateway,
     ) -> None:
         """Конструктор.
@@ -40,12 +42,14 @@ class UserService:
             image_repo (RepositoryInterface): Репозиторий изображений
             security (SecurityService): Секьюрити сервис
             validator (ValidationService): Сервис валидации
+            image_validator (ImageValidator): Сервис валидации изображений
             storage (MinioGateway): Сервис хранилища
         """
         self._user_repo = user_repo
         self._image_repo = image_repo
         self._security = security
         self._validator = validator
+        self._image_validator = image_validator
         self._storage = storage
 ```
 ---
@@ -221,10 +225,7 @@ class UserService:
         Returns:
             UploadedImage: Загруженное изображение
         """
-        if not await self._validator.validate_image_extension(file):
-            raise ImageExtensionValidationError(
-                "Расширение должно быть одним из списка: .jpg, .jpeg, .png, .tif, .tiff"
-            )
+        self._image_validator.validate_image_file(file)
 
         content = await file.read()
         raw_image = io.BytesIO(content)

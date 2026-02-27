@@ -168,7 +168,9 @@ class UnauthorizedError(Exception):
 | `message` | `str \| Exception` | Сообщение об ошибке". (optional) |
 
 ```python
-    def __init__(self, message: str | Exception = "Пользователь не авторизован.") -> None:
+    def __init__(
+        self, message: str | Exception = "Пользователь не авторизован."
+    ) -> None:
         """Конструктор.
 
         Args:

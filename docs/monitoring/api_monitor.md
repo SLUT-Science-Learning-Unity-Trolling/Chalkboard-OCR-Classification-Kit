@@ -17,7 +17,6 @@ class ApiMonitor:
     """Простой монитор API запросов с логированием в файл.
 
     Позволяет:
-
         - Считать общее количество запросов.
         - Собирать статистику по пути запроса, HTTP-методу и статусу ответа.
         - Хранить замеры времени обработки (latency) по каждому пути.
@@ -88,6 +87,7 @@ class ApiMonitor:
 #### Возвращает текущую сводку по статистике API.
 
 Сводка включает:
+
 - total: Общее количество запросов
 - by_path: Счетчик запросов по пути
 - by_method: Счетчик по HTTP-методам
@@ -104,6 +104,7 @@ class ApiMonitor:
         """Возвращает текущую сводку по статистике API.
 
         Сводка включает:
+
             - total: Общее количество запросов
             - by_path: Счетчик запросов по пути
             - by_method: Счетчик по HTTP-методам
@@ -115,7 +116,8 @@ class ApiMonitor:
         """
         with self._lock:
             avg_latency = {
-                p: (sum(lst) / len(lst)) if lst else 0.0 for p, lst in self.latencies.items()
+                p: (sum(lst) / len(lst)) if lst else 0.0
+                for p, lst in self.latencies.items()
             }
             return {
                 "total": self.total_requests,

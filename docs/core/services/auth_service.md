@@ -116,9 +116,7 @@ class AuthService:
             query: dict[str, str] = {"email": identifier}
         else:
             self._validation.validate_credentials(
-                identifier=identifier,
-                password=password,
-                is_email=False
+                identifier=identifier, password=password, is_email=False
             )
             query: dict[str, str] = {"username": identifier}
 
@@ -215,10 +213,12 @@ class AuthService:
 
             user_id = claims["sub"]
             if not user_id:
-                raise InvalidTokenError("В токене отсутствует идентификатор пользователя.")
+                raise InvalidTokenError(
+                    "В токене отсутствует идентификатор пользователя."
+                )
 
         except Exception:
-            raise InvalidTokenError("Невалидный токен")
+            raise InvalidTokenError("Невалидный токен") from None
 
         user_service = container.resolve(UserService)
         user = await user_service.get_user_by_id(user_id)
@@ -366,7 +366,9 @@ class AuthService:
 | `InvalidTokenError` | Если токен недействителен или тип не совпадает. |
 
 ```python
-    async def _blacklist_token(self, token: str, expected_type: str, expires_in: int) -> None:
+    async def _blacklist_token(
+        self, token: str, expected_type: str, expires_in: int
+    ) -> None:
         """Добавляет PASETO токен в черный список по jti.
 
         Проверяет тип токена и сохраняет jti в RedisBlacklistRepo.
@@ -386,8 +388,10 @@ class AuthService:
             if claims.get("type") == expected_type:
                 jti = claims.get("jti")
                 if jti and self._redis_blacklist:
-                    await self._redis_blacklist.add_to_blacklist(jti, expires_in=expires_in)
+                    await self._redis_blacklist.add_to_blacklist(
+                        jti, expires_in=expires_in
+                    )
         except Exception:
-            raise InvalidTokenError("Refresh токен не валиден")
+            raise InvalidTokenError("Refresh токен не валиден") from None
 ```
 ---

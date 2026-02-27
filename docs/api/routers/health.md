@@ -31,11 +31,12 @@
         ),
         HTTP_500_INTERNAL_SERVER_ERROR: ResponseSpec(
             description="Сервер недоступен",
-            data_container=ProblemDetailsDTO,
+            data_container=ErrorMeta,
             examples=[
                 Example(
-                    value=ErrorCodes.SERVICE_CONNECTION_ERROR.example(
-                        "Сервер не отвечает"
+                    value=problem_factory.build(
+                        error=ErrorCode.SERVICE_CONNECTION_ERROR,
+                        detail="Сервер не отвечает",
                     ),
                 )
             ],
@@ -76,11 +77,12 @@ def server_health_check() -> JSONResponse:
         ),
         HTTP_500_INTERNAL_SERVER_ERROR: ResponseSpec(
             description="Ошибка подключения к MongoDB",
-            data_container=ProblemDetailsDTO,
+            data_container=ErrorMeta,
             examples=[
                 Example(
-                    value=ErrorCodes.SERVICE_CONNECTION_ERROR.example(
-                        "Не удалось подключиться к MongoDB"
+                    value=problem_factory.build(
+                        error=ErrorCode.SERVICE_CONNECTION_ERROR,
+                        detail="Не удалось подключиться к MongoDB",
                     ),
                 )
             ],
@@ -128,11 +130,12 @@ async def db_health_check() -> JSONResponse:
         ),
         HTTP_500_INTERNAL_SERVER_ERROR: ResponseSpec(
             description="Ошибка подключения к MinIO",
-            data_container=ProblemDetailsDTO,
+            data_container=ErrorMeta,
             examples=[
                 Example(
-                    value=ErrorCodes.SERVICE_CONNECTION_ERROR.example(
-                        "Не удалось подключиться к MinIO"
+                    value=problem_factory.build(
+                        error=ErrorCode.SERVICE_CONNECTION_ERROR,
+                        detail="Не удалось подключиться к MinIO",
                     ),
                 )
             ],
@@ -181,11 +184,12 @@ async def minio_health_check() -> JSONResponse:
         ),
         HTTP_500_INTERNAL_SERVER_ERROR: ResponseSpec(
             description="Ошибка подключения к Redis",
-            data_container=ProblemDetailsDTO,
+            data_container=ErrorMeta,
             examples=[
                 Example(
-                    value=ErrorCodes.SERVICE_CONNECTION_ERROR.example(
-                        "Не удалось подключиться к Redis",
+                    value=problem_factory.build(
+                        error=ErrorCode.SERVICE_CONNECTION_ERROR,
+                        detail="Не удалось подключиться к Redis",
                     ),
                 )
             ],
@@ -243,11 +247,12 @@ async def redis_health_check() -> JSONResponse:
         ),
         HTTP_500_INTERNAL_SERVER_ERROR: ResponseSpec(
             description="Ошибка подключения к одному или нескольким сервисам",
-            data_container=ProblemDetailsDTO,
+            data_container=ErrorMeta,
             examples=[
                 Example(
-                    value=ErrorCodes.SERVICE_CONNECTION_ERROR.example(
-                        "Не удалось подключиться к одному или нескольким сервисам"
+                    value=problem_factory.build(
+                        error=ErrorCode.SERVICE_CONNECTION_ERROR,
+                        detail="Не удалось подключиться к одному или нескольким сервисам",
                     ),
                 )
             ],

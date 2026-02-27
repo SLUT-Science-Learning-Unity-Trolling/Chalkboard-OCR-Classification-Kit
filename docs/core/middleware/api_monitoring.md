@@ -47,6 +47,9 @@ def api_monitor_middleware(container: Container) -> Callable[[ASGIApp], ASGIApp]
 
             Args:
                 app (ASGIApp): ASGI-приложение для обёртывания.
+                scope (Scope): Скоуп запроса.
+                receive (Receive): Функция для получения сообщений.
+                send (Send): Функция для отправки сообщений.
 
             Returns:
                 ASGIApp: Обёрнутое приложение с мониторингом.
