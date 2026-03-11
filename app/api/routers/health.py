@@ -1,10 +1,12 @@
 """Модуль содержит эндпоинты для проверки работы сервера и подключения к сервисам."""
 # API_Health
 
+import json
 from litestar import Router, get
 from litestar.openapi import ResponseSpec
 from litestar.openapi.spec import Example
 from litestar.status_codes import HTTP_200_OK, HTTP_500_INTERNAL_SERVER_ERROR
+from starlette.responses import PlainTextResponse
 from pymongo import AsyncMongoClient
 from pymongo.errors import ConnectionFailure
 from redis import Redis
@@ -14,6 +16,7 @@ from app.adapters.gateways.redis import RedisGateway
 from app.adapters.gateways.s3 import MinioGateway
 from app.api.exceptions.problem_factory import ErrorCode, ErrorMeta, problem_factory
 from app.config import config
+from app.monitoring.prometheus import metrics_as_json, metrics_endpoint
 
 
 client = AsyncMongoClient(config.DATABASE_URL)
@@ -262,6 +265,27 @@ async def all_services_health_check() -> JSONResponse:
     else:
         return JSONResponse({"status": "error", **errors}, status_code=500)
 
+@get(
+    "/metrics",
+    summary="Показать метрики Prometheus",
+    description="Эндпоинт возвращает метрики в формате Prometheus",
+    tags=["Debug"],
+    status_code=HTTP_200_OK,
+)
+def metrics_handler() -> PlainTextResponse:
+    data, ctype = metrics_endpoint()
+    return PlainTextResponse(content=data, media_type=ctype)
+
+@get(
+    "/metrics/json",
+    summary="Метрики Prometheus в JSON",
+    description="Возвращает метрики в удобочитаемом JSON для дебага",
+    tags=["Debug"],
+)
+def metrics_json_handler() -> JSONResponse:
+    data = metrics_as_json()
+    return JSONResponse(content=json.loads(data))
+
 
 health_router = Router(
     path="/health",
@@ -272,5 +296,7 @@ health_router = Router(
         minio_health_check,
         redis_health_check,
         all_services_health_check,
+        metrics_handler,
+        metrics_json_handler,
     ],
 )

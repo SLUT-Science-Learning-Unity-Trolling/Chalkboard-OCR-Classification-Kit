@@ -2,7 +2,7 @@
 # RateLimitRepo
 
 from app.adapters.gateways.redis import RedisGateway
-
+from app.monitoring.prometheus_redis import monitor_redis
 
 class RedisRateLimitRepo:
     """Репозиторий для работы с rate limit в Redis."""
@@ -33,10 +33,16 @@ class RedisRateLimitRepo:
         client = await self._gateway.get_connection()
         redis_key = self._key(key, action)
 
-        current = await client.incr(redis_key)
+        current = await monitor_redis(
+            "increment",
+            client.incr(redis_key)
+        )
 
         if current == 1:
-            await client.expire(redis_key, window)
+            await monitor_redis(
+                "expire",
+                client.expire(redis_key, window)
+            )
 
         return current
 
@@ -62,7 +68,7 @@ class RedisRateLimitRepo:
         if current <= limit:
             return True, None
 
-        ttl = await client.ttl(redis_key)
+        ttl = await monitor_redis("ttl", client.ttl(self._key(key, action)))
         retry_after = int(ttl) if ttl and ttl > 0 else None
 
         return False, retry_after

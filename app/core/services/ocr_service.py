@@ -22,8 +22,31 @@ from paddleocr import PaddleOCR
 from PIL import Image, ImageEnhance, ImageOps
 from pix2text import Pix2Text
 
+import time
+from app.monitoring.prometheus import OCR_PROCESSED, OCR_ERRORS, OCR_LATENCY
 from app.config import config
 
+import time
+from functools import wraps
+from app.monitoring.prometheus import OCR_PROCESSED, OCR_ERRORS, OCR_LATENCY
+
+def monitor_ocr_func(func):
+    """Декоратор для мониторинга OCR: считает ошибки, успешные обработки и latency."""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.perf_counter()
+        try:
+            result = func(*args, **kwargs)
+        except Exception:
+            OCR_ERRORS.inc()
+            raise
+        else:
+            OCR_PROCESSED.inc()
+            return result
+        finally:
+            duration = time.perf_counter() - start
+            OCR_LATENCY.observe(duration)
+    return wrapper
 
 # ============================================================
 # Engines
@@ -848,7 +871,7 @@ def images_bytes_to_pdf_bytes(images: list[bytes], summarize: bool = True) -> by
 
     return markdown_to_pdf_bytes(md)
 
-
+@monitor_ocr_func
 def image_bytes_to_pdf_bytes(image_bytes: bytes, summarize: bool = True) -> bytes:
     """Главная функция OCR→Markdown→PDF.
 

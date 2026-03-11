@@ -1,6 +1,7 @@
 """Модуль содержит класс MongoRepo для работы с базой данных MongoDB."""
 # MongoRepo
 
+import time
 from typing import Any
 
 from bson import ObjectId
@@ -8,6 +9,7 @@ from pymongo.asynchronous.collection import AsyncCollection
 
 from app.adapters.interfaces.db import DBGatewayInterface
 from app.adapters.repositories.abc_repo import RepositoryInterface
+from app.monitoring.prometheus_mongo import monitored_mongo_call
 
 
 """
@@ -65,7 +67,7 @@ class MongoRepo(RepositoryInterface):
             ObjectId: Уникальный идентификатор добавленного документа.
         """
         collection = await self._init_collection()
-        result = await collection.insert_one(data)
+        result = await monitored_mongo_call("insert_one", collection.insert_one(data))
         return result.inserted_id
 
     async def get_one(self, query: dict[str, Any]) -> dict[str, Any]:
@@ -78,7 +80,7 @@ class MongoRepo(RepositoryInterface):
             dict[str, Any] | None: Найденный документ или None, если не найден.
         """
         collection = await self._init_collection()
-        result = await collection.find_one(query)
+        result =  await monitored_mongo_call("find_one", collection.find_one(query))
         return result
 
     async def get_many(
@@ -95,7 +97,7 @@ class MongoRepo(RepositoryInterface):
         """
         collection = await self._init_collection()
         result = collection.find(query).limit(limit)
-        return await result.to_list()
+        return await monitored_mongo_call("find_many", result.to_list())
 
     async def update(
         self, query: dict[str, Any], update_data: dict[str, Any]
@@ -110,7 +112,7 @@ class MongoRepo(RepositoryInterface):
             dict[str, Any] | None: Обновленный документ или None, если документ не найден.
         """
         collection = await self._init_collection()
-        result = await collection.find_one_and_update(filter=query, update=update_data)
+        result =  await monitored_mongo_call("find_one_and_update", collection.find_one_and_update(filter=query, update=update_data))
         return result
 
     async def delete(self, query: dict[str, Any]) -> bool:
@@ -127,7 +129,7 @@ class MongoRepo(RepositoryInterface):
         """
         try:
             collection = await self._init_collection()
-            await collection.find_one_and_delete(query)
+            await monitored_mongo_call("find_one_and_delete", collection.find_one_and_delete(query))
             return True
         except Exception as e:
             raise ValueError(f"Ошибка при удалении документа: {e}") from e

@@ -12,7 +12,7 @@ from app.container import build_container
 from app.core.middleware.api_monitoring import api_monitor_middleware
 from app.core.middleware.paseto_refresh import access_token_middleware
 from app.core.middleware.rate_limit import rate_limit_middleware
-
+from app.monitoring.prometheus_middleware import PrometheusMiddleware
 
 if config.DEBUG:
     pass
@@ -51,9 +51,11 @@ app = Litestar(
     debug=True,
     cors_config=cors_config,
     middleware=[
+        PrometheusMiddleware(),
         access_token_middleware(container=container),
         rate_limit_middleware(container=container),
         api_monitor_middleware(container=container),
+
     ],
     exception_handlers=EXCEPTION_HANDLERS,
 )

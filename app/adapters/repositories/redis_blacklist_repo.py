@@ -2,7 +2,7 @@
 # RedisRepo
 
 from app.adapters.gateways.redis import RedisGateway
-
+from app.monitoring.prometheus_redis import monitor_redis
 
 class RedisBlacklistRepo:
     """Репозиторий для работы с Redis."""
@@ -26,7 +26,10 @@ class RedisBlacklistRepo:
             expires_in (int): Время жизни в секундах.
         """
         client = await self._gateway.get_connection()
-        await client.set(self._key(jti), "1", ex=expires_in)
+        await monitor_redis(
+            "add_to_blacklist",
+            client.set(self._key(jti), "1", ex=expires_in)
+        )
 
     async def is_blacklisted(self, jti: str) -> bool:
         """Проверяет, находится ли JTI токена в blacklist.
@@ -38,10 +41,16 @@ class RedisBlacklistRepo:
             bool: True, если токен в blacklist, иначе False.
         """
         client = await self._gateway.get_connection()
-        exists = await client.exists(self._key(jti))
+        exists = await monitor_redis(
+            "is_blacklisted",
+            client.exists(self._key(jti))
+        )
         return bool(exists)
 
     async def remove_from_blacklist(self, jti: str) -> None:
         """Удаляет JTI токена из blacklist (опционально)."""
         client = await self._gateway.get_connection()
-        await client.delete(self._key(jti))
+        await monitor_redis(
+            "remove_from_blacklist",
+            client.delete(self._key(jti))
+        )
