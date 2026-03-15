@@ -298,3 +298,46 @@ async def all_services_health_check() -> JSONResponse:
         return JSONResponse({"status": "error", **errors}, status_code=500)
 ```
 ---
+## def metrics_handler:
+#### Маршрут:
+- **Декоратор:** @get
+- **Маршрут:** `/metrics`
+- **Заголовок:** Показать метрики Prometheus
+- **Описание:** Эндпоинт возвращает метрики в формате Prometheus
+- **Теги:** Debug
+
+
+```python
+@get(
+    "/metrics",
+    summary="Показать метрики Prometheus",
+    description="Эндпоинт возвращает метрики в формате Prometheus",
+    tags=["Debug"],
+    status_code=HTTP_200_OK,
+)
+def metrics_handler() -> PlainTextResponse:
+    data, ctype = metrics_endpoint()
+    return PlainTextResponse(content=data, media_type=ctype)
+```
+---
+## def metrics_json_handler:
+#### Маршрут:
+- **Декоратор:** @get
+- **Маршрут:** `/metrics/json`
+- **Заголовок:** Метрики Prometheus в JSON
+- **Описание:** Возвращает метрики в удобочитаемом JSON для дебага
+- **Теги:** Debug
+
+
+```python
+@get(
+    "/metrics/json",
+    summary="Метрики Prometheus в JSON",
+    description="Возвращает метрики в удобочитаемом JSON для дебага",
+    tags=["Debug"],
+)
+def metrics_json_handler() -> JSONResponse:
+    data = metrics_as_json()
+    return JSONResponse(content=json.loads(data))
+```
+---

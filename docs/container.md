@@ -134,6 +134,62 @@ def build_container() -> Container:
 
     container.register(ApiMonitor, ApiMonitor, scope=Scope.singleton)
 
+    def register_ocr_engines(container: Container, device: str = "cpu") -> None:
+        """Регистрация OCR движков в контейнере."""
+        
+        # Формула/распознавание формул
+        container.register(
+            Pix2TextEngine,
+            factory=lambda: Pix2TextEngine.from_config(device=device),
+            scope=Scope.singleton,
+        )
+
+        # Текстовый OCR (PaddleOCR)
+        container.register(
+            PaddleOCREngine,
+            factory=lambda: PaddleOCREngine.from_config(device=device),
+            scope=Scope.singleton,
+        )
+
+        # Текстовый OCR (Tesseract)
+        container.register(
+            TesseractOCREngine,
+            factory=lambda: TesseractOCREngine.from_config(),
+            scope=Scope.singleton,
+        )
+
+        # Текстовый OCR (EasyOCR)
+        container.register(
+            EasyOCREngine,
+            factory=lambda: EasyOCREngine.from_config(lang=["ru"], gpu=False),
+            scope=Scope.singleton,
+        )
+
+        # Текстовый OCR (RapidOCR)
+        container.register(
+            RapidOCREngine,
+            factory=lambda: RapidOCREngine.from_config(),
+            scope=Scope.singleton,
+        )
+
+        # Текстовый OCR (Doctr)
+        container.register(
+            DocTROCREngine,
+            factory=lambda: DocTROCREngine.from_config(),
+            scope=Scope.singleton,
+        )
+
+    register_ocr_engines(container, device="cpu")
+
+    container.register(
+        OCRService,
+        factory=lambda: OCRService(
+            formula_engine=container.resolve(Pix2TextEngine),
+            text_engine=container.resolve(PaddleOCREngine),
+        ),
+        scope=Scope.singleton,
+    )
+
     return container
 ```
 ---

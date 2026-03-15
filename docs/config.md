@@ -95,8 +95,6 @@ class Config:
         "jpg",
         "jpeg",
         "png",
-        "tif",
-        "tiff",
     )
 
     """Конфигурация дебага"""

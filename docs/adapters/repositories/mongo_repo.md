@@ -82,7 +82,7 @@ class MongoRepo(RepositoryInterface):
             ObjectId: Уникальный идентификатор добавленного документа.
         """
         collection = await self._init_collection()
-        result = await collection.insert_one(data)
+        result = await monitored_mongo_call("insert_one", collection.insert_one(data))
         return result.inserted_id
 ```
 ---
@@ -110,7 +110,7 @@ class MongoRepo(RepositoryInterface):
             dict[str, Any] | None: Найденный документ или None, если не найден.
         """
         collection = await self._init_collection()
-        result = await collection.find_one(query)
+        result =  await monitored_mongo_call("find_one", collection.find_one(query))
         return result
 ```
 ---
@@ -143,7 +143,7 @@ class MongoRepo(RepositoryInterface):
         """
         collection = await self._init_collection()
         result = collection.find(query).limit(limit)
-        return await result.to_list()
+        return await monitored_mongo_call("find_many", result.to_list())
 ```
 ---
 ## async def update:
@@ -174,7 +174,7 @@ class MongoRepo(RepositoryInterface):
             dict[str, Any] | None: Обновленный документ или None, если документ не найден.
         """
         collection = await self._init_collection()
-        result = await collection.find_one_and_update(filter=query, update=update_data)
+        result =  await monitored_mongo_call("find_one_and_update", collection.find_one_and_update(filter=query, update=update_data))
         return result
 ```
 ---
@@ -211,7 +211,7 @@ class MongoRepo(RepositoryInterface):
         """
         try:
             collection = await self._init_collection()
-            await collection.find_one_and_delete(query)
+            await monitored_mongo_call("find_one_and_delete", collection.find_one_and_delete(query))
             return True
         except Exception as e:
             raise ValueError(f"Ошибка при удалении документа: {e}") from e
