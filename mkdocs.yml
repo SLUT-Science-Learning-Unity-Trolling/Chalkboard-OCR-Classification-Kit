@@ -51,7 +51,7 @@ nav:
           - Paseto Refresh: core/middleware/paseto_refresh.md
           - Rate Limit: core/middleware/rate_limit.md
       - Utils:
-          - Utils: core/utils/utils.py
+          - Utils: core/utils/utils.md
   - API:
       - Routers:
           - Auth: api/routers/auth.md
@@ -63,8 +63,16 @@ nav:
           - Image DTO: api/schemas/image_dto.md
       - Exceptions:
           - Handlers: api/exceptions/handlers.md
+          - Problem Details DTO: api/exceptions/problem_details_dto.md
           - Problem Factory: api/exceptions/problem_factory.md
   - Adapters:
+      - Engines:
+          - Doctr Engine: adapters/engines/doctr_engine.md
+          - EasyOCR Engine: adapters/engines/easy_ocr_engine.md
+          - Paddle Engine: adapters/engines/paddle_engine.md
+          - Pix2Text Engine: adapters/engines/pix2text_engine.md
+          - RapidOCR: adapters/engines/rapidocr.md
+          - Tesseract Engine: adapters/engines/tesseract_engine.md
       - Gateways:
           - Mongo Gateway: adapters/gateways/mongo.md
           - Minio Gateway: adapters/gateways/s3.md
@@ -78,19 +86,28 @@ nav:
           - Redis RateLimit Repository: adapters/repositories/redis_rate_limit_repo.md
       - Interfaces:
           - Database Interface: adapters/interfaces/db.md
+          - OCR Engine Interface: adapters/interfaces/ocr_engine.md
           - Minio Interface: adapters/interfaces/s3.md
   - Monitoring:
       - API Monitor: monitoring/api_monitor.md
+      - Graphs: monitoring/graphs.md
+      - OCR Correction: monitoring/ocr_correction.md
+      - Prometheus: monitoring/prometheus.md
+      - Prometheus Middleware: monitoring/prometheus_middleware.md
+      - Prometheus Mongo: monitoring/prometheus_mongo.md
+      - Prometheus Redis: monitoring/prometheus_redis.md
   - Main: main.md
   - Container: container.md
   - Config: config.md
-  - Тесты: tests/in_work.md
+  - Тесты: in_work.md
   - Скрипты: scripts/clean_project.md
   - Утилиты: utils/generate_docs.md
   - Диаграммы:
       - Обзор: diagrams/diagrams.md
       - Бизнес-логика: diagrams/business_logic_diagram.png
       - Техническая архитектура: diagrams/tech_architecture_diagram.png
+      - Отчёт по метрикам: diagrams/отчёт.md
+      - Диаграммы метрик: diagrams/metrics_diagram.png
 
 plugins:
   - search
