@@ -21,16 +21,16 @@ container = build_container()
 
 openapi_config = OpenAPIConfig(
     title="COCK API",
-    version="1.5.0",
+    version="2.0.0",
     summary="API для сервиса Chalkboard OCR Classification Kit",
     description="""
 Готовый к продакшену  OCR API
 
-Фичи:
+Особенности
  - PASETO токены
  - MongoDB основное хранилище данных
- - Хранение изображений в MinIO
- - Чёрный список токенов в Redis
+ - Чёрный список токенов и rate limit через Redis
+ - Отдельные движки для распознавания формул и текста, переключаемые изменением одной строки кода
 """,
     contact={"name": "ProudRykar", "email": "proudrykar@mail.ru"},
     license={"name": "MIT License", "url": "https://opensource.org/licenses/MIT"},

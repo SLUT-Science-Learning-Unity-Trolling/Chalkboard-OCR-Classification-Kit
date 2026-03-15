@@ -21,8 +21,6 @@ TARGETS=(
   "dist"
   "*.egg-info"
   "pip-wheel-metadata"
-  ".venv"
-  "venv"
   ".ipynb_checkpoints"
   ".DS_Store"
   ".coverage"

@@ -8,7 +8,7 @@ readme = "README.md"
 package-mode = false
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.12,<3.13"
 
 # --- Core dependencies ---
 punq = "^0.7.0"
@@ -47,6 +47,10 @@ ipywidgets = "^8.1.8"
 ipython = "^9.11.0"
 anywidget = "^0.9.21"
 dash = "^4.0.0"
+python-levenshtein = "^0.27.3"
+scikit-learn = "^1.8.0"
+rapidocr-onnxruntime = "^1.4.4"
+python-doctr = "^1.0.1"
 
 
 [tool.poetry.group.docs.dependencies]
