@@ -126,9 +126,9 @@ async def auth_user(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=True,
+        secure=False,
         max_age=config.ACCESS_TOKEN_EXPIRE_TIME,
-        samesite="strict",
+        samesite="lax",
         path="/",
     )
 
@@ -136,9 +136,9 @@ async def auth_user(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True,
+        secure=False,
         max_age=config.REFRESH_TOKEN_EXPIRE_TIME,
-        samesite="strict",
+        samesite="lax",
         path="/auth",
     )
     return response
@@ -325,9 +325,9 @@ async def refresh_user(request: Request, container: Container) -> Response:
         key="access_token",
         value=new_access,
         httponly=True,
-        secure=True,
+        secure=False,
         max_age=config.ACCESS_TOKEN_EXPIRE_TIME,
-        samesite="strict",
+        samesite="lax",
         path="/",
     )
 
@@ -335,9 +335,9 @@ async def refresh_user(request: Request, container: Container) -> Response:
         key="refresh_token",
         value=new_refresh,
         httponly=True,
-        secure=True,
+        secure=False,
         max_age=config.REFRESH_TOKEN_EXPIRE_TIME,
-        samesite="strict",
+        samesite="lax",
         path="/auth",
     )
 
