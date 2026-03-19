@@ -38,7 +38,7 @@ openapi_config = OpenAPIConfig(
 )
 
 cors_config = CORSConfig(
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "http://178.213.116.90:5173"],
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
     allow_credentials=True,
