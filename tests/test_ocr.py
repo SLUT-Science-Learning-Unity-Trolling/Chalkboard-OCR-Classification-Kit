@@ -13,15 +13,13 @@ import pytest
 from PIL import Image
 
 
-# ============================================================
-# Install fake heavy deps BEFORE importing ocr_service
-# ============================================================
 
 def _install_fake_cv2() -> None:
     if "cv2" in sys.modules:
         return
 
     cv2 = types.ModuleType("cv2")
+
     # constants used in module
     cv2.COLOR_RGB2BGR = 0
     cv2.COLOR_BGR2RGB = 1
@@ -107,15 +105,11 @@ _install_fake_cv2()
 _install_fake_paddleocr_and_pix2text()
 
 
-# ============================================================
 # Import module under test
-# ============================================================
 ocr = importlib.import_module("app.core.services.ocr_service")
 
 
-# ============================================================
 # Fixtures
-# ============================================================
 
 @pytest.fixture
 def simple_image_bytes() -> bytes:
@@ -125,9 +119,14 @@ def simple_image_bytes() -> bytes:
     return buf.getvalue()
 
 
-# ============================================================
+@pytest.fixture
+def ocr_service():
+    formula_engine = Mock()
+    text_engine = Mock()
+    return ocr.OCRService(formula_engine, text_engine)
+
+
 # Pure text utils
-# ============================================================
 
 def test_restore_paragraphs_adds_blank_line_after_sentence():
     text = "Это предложение.\nСледующая строка"
@@ -157,17 +156,17 @@ def test_replace_lat_to_cyr_outside_math_only():
     assert out.splitlines()[3] == "еnd"
 
 
-def test_ensure_nonempty_markdown():
-    assert ocr._ensure_nonempty_markdown("") == "(OCR вернул пустой результат)"
-    assert ocr._ensure_nonempty_markdown("   ") == "(OCR вернул пустой результат)"
-    assert ocr._ensure_nonempty_markdown("x") == "x"
+# OCRService private helpers
+
+def test_ensure_nonempty_markdown(ocr_service):
+    assert ocr_service._ensure_nonempty_markdown("") == "(OCR вернул пустой результат)"
+    assert ocr_service._ensure_nonempty_markdown("   ") == "(OCR вернул пустой результат)"
+    assert ocr_service._ensure_nonempty_markdown("x") == "x"
 
 
-# ============================================================
 # markdown_to_pdf_bytes: mock pandoc (subprocess.run)
-# ============================================================
 
-def test_markdown_to_pdf_bytes_success(monkeypatch):
+def test_markdown_to_pdf_bytes_success(monkeypatch, ocr_service):
     def fake_run(cmd, capture_output=True, text=True):
         out_idx = cmd.index("-o") + 1
         out_pdf = cmd[out_idx]
@@ -176,11 +175,11 @@ def test_markdown_to_pdf_bytes_success(monkeypatch):
 
     monkeypatch.setattr(ocr.subprocess, "run", fake_run)
 
-    pdf = ocr.markdown_to_pdf_bytes("hello", debug=False)
+    pdf = ocr_service.markdown_to_pdf_bytes("hello", debug=False)
     assert pdf.startswith(b"%PDF-FAKE%")
 
 
-def test_markdown_to_pdf_bytes_failure_raises(monkeypatch):
+def test_markdown_to_pdf_bytes_failure_raises(monkeypatch, ocr_service):
     calls = {"n": 0}
 
     def fake_run(cmd, capture_output=True, text=True):
@@ -192,17 +191,14 @@ def test_markdown_to_pdf_bytes_failure_raises(monkeypatch):
     monkeypatch.setattr(ocr.subprocess, "run", fake_run)
 
     with pytest.raises(RuntimeError) as exc:
-        ocr.markdown_to_pdf_bytes("hello", debug=False)
+        ocr_service.markdown_to_pdf_bytes("hello", debug=False)
 
     assert "pandoc failed" in str(exc.value)
 
 
-# ============================================================
 # summarize_markdown_openrouter_requests: mock requests.post
-# ============================================================
 
 def test_summarize_markdown_openrouter_requests_success(monkeypatch):
-    # В функции api_key переопределяется через config.API_KEY
     monkeypatch.setattr(ocr.config, "API_KEY", "test-key", raising=False)
 
     fake_resp = Mock()
@@ -237,93 +233,93 @@ def test_summarize_markdown_openrouter_requests_retries_then_fails(monkeypatch):
     assert "Не удалось получить ответ" in str(exc.value)
 
 
-# ============================================================
 # image_bytes_to_markdown: mock heavy OCR path
-# ============================================================
 
-def test_image_bytes_to_markdown_happy_path(monkeypatch, simple_image_bytes):
-    # не используем cv2 — мокаем preprocess
-    monkeypatch.setattr(ocr, "preprocess_screen_photo", lambda img_pil, **kw: img_pil.convert("RGB"))
-    monkeypatch.setattr(ocr, "_mask_polys_white", lambda bgr, polys: bgr)
+def test_image_bytes_to_markdown_happy_path(monkeypatch, ocr_service, simple_image_bytes):
+    monkeypatch.setattr(ocr_service, "_prepare_image", lambda image_bytes, **kw: Image.open(io.BytesIO(image_bytes)).convert("RGB"))
+    monkeypatch.setattr(ocr_service, "_detect_formula_boxes", lambda *args, **kwargs: [
+        ocr.OcrBox(
+            type="embedding",
+            text="x^2",
+            score=0.9,
+            box=np.array([[0, 0], [10, 0], [10, 10], [0, 10]], dtype=np.float32),
+        )
+    ])
+    monkeypatch.setattr(ocr_service, "_detect_text_boxes", lambda *args, **kwargs: [
+        ocr.OcrBox(
+            type="text",
+            text="a c",
+            score=0.9,
+            box=np.array([[0, 20], [20, 20], [20, 30], [0, 30]], dtype=np.float32),
+        )
+    ])
+    monkeypatch.setattr(
+    ocr_service,
+    "_assemble_markdown",
+    lambda text_boxes, formula_boxes, math_delims="dollars": "а с $x^2$"
+)
+    monkeypatch.setattr(ocr, "replace_lat_to_cyr_outside_math", lambda s: s.replace("a", "а").replace("c", "с"))
+    monkeypatch.setattr(ocr, "unwrap_plain_text_math", lambda s: s)
 
-    # формула
-    fake_formula = ocr.OcrBox(
-        type="embedding",
-        text="x^2",
-        score=0.9,
-        box=np.array([[0, 0], [10, 0], [10, 10], [0, 10]], dtype=np.float32),
-    )
-    monkeypatch.setattr(ocr, "_pix2text_detect_and_recognize_formulas", lambda **kwargs: [fake_formula])
-
-    # текст
-    fake_text = ocr.OcrBox(
-        type="text",
-        text="a c",
-        score=0.9,
-        box=np.array([[0, 20], [20, 20], [20, 30], [0, 30]], dtype=np.float32),
-    )
-    monkeypatch.setattr(ocr, "_paddle_text_boxes", lambda paddle, img_bgr: [fake_text])
-
-    md = ocr.image_bytes_to_markdown(
+    md = ocr_service.image_bytes_to_markdown(
         image_bytes=simple_image_bytes,
-        p2t=Mock(),
-        paddle=Mock(),
         contain_formula=True,
         math_delims="dollars",
         skip_warp=True,
     )
 
     assert "$x^2$" in md
-    assert "а" in md and "с" in md  # lat->cyr
+    assert "а" in md and "с" in md
 
 
-def test_image_bytes_to_markdown_empty_result(monkeypatch, simple_image_bytes):
-    monkeypatch.setattr(ocr, "preprocess_screen_photo", lambda img_pil, **kw: img_pil.convert("RGB"))
-    monkeypatch.setattr(ocr, "_mask_polys_white", lambda bgr, polys: bgr)
-    monkeypatch.setattr(ocr, "_pix2text_detect_and_recognize_formulas", lambda **kwargs: [])
-    monkeypatch.setattr(ocr, "_paddle_text_boxes", lambda paddle, img_bgr: [])
+def test_image_bytes_to_markdown_empty_result(monkeypatch, ocr_service, simple_image_bytes):
+    monkeypatch.setattr(ocr_service, "_prepare_image", lambda image_bytes, **kw: Image.open(io.BytesIO(image_bytes)).convert("RGB"))
+    monkeypatch.setattr(ocr_service, "_detect_formula_boxes", lambda *args, **kwargs: [])
+    monkeypatch.setattr(ocr_service, "_detect_text_boxes", lambda *args, **kwargs: [])
+    monkeypatch.setattr(ocr_service, "_assemble_markdown", lambda text_boxes, formula_boxes, math_delims="dollars": "(OCR вернул пустой результат)")
 
-    md = ocr.image_bytes_to_markdown(
+    md = ocr_service.image_bytes_to_markdown(
         image_bytes=simple_image_bytes,
-        p2t=Mock(),
-        paddle=Mock(),
         contain_formula=False,
         skip_warp=True,
     )
     assert md == "(OCR вернул пустой результат)"
 
 
-# ============================================================
 # images_bytes_to_pdf_bytes / image_bytes_to_pdf_bytes: mock pipeline
-# ============================================================
 
-def test_images_bytes_to_pdf_bytes_with_summary(monkeypatch, simple_image_bytes):
-    monkeypatch.setattr(ocr, "images_bytes_to_markdown", lambda images, **kw: "MD")
+def test_images_bytes_to_markdown_combines_images(monkeypatch, ocr_service, simple_image_bytes):
+    monkeypatch.setattr(ocr_service, "image_bytes_to_markdown", lambda image_bytes, **kw: "MD")
+
+    out = ocr_service.images_bytes_to_markdown([simple_image_bytes, simple_image_bytes])
+    assert "Фото 1" in out
+    assert "Фото 2" in out
+    assert out.count("MD") == 2
+
+
+def test_images_bytes_to_pdf_bytes_with_summary(monkeypatch, ocr_service, simple_image_bytes):
+    monkeypatch.setattr(ocr_service, "images_bytes_to_markdown", lambda images, **kw: "MD")
     monkeypatch.setattr(ocr, "summarize_markdown_openrouter_requests", lambda md: "SUMMD")
+    monkeypatch.setattr(ocr_service, "markdown_to_pdf_bytes", lambda md, **kw: b"%PDF%")
 
-    def fake_run(cmd, capture_output=True, text=True):
-        out_idx = cmd.index("-o") + 1
-        out_pdf = cmd[out_idx]
-        Path(out_pdf).write_bytes(b"%PDF%")
-        return types.SimpleNamespace(returncode=0, stderr="", stdout="")
-
-    monkeypatch.setattr(ocr.subprocess, "run", fake_run)
-
-    pdf = ocr.images_bytes_to_pdf_bytes([simple_image_bytes], summarize=True)
+    pdf = ocr_service.images_bytes_to_pdf_bytes([simple_image_bytes], summarize=True)
     assert pdf.startswith(b"%PDF%")
 
 
-def test_image_bytes_to_pdf_bytes_without_summary(monkeypatch, simple_image_bytes):
-    monkeypatch.setattr(ocr, "image_bytes_to_markdown", lambda *a, **kw: "MD")
+def test_image_bytes_to_pdf_bytes_without_summary(monkeypatch, ocr_service, simple_image_bytes):
+    monkeypatch.setattr(ocr_service, "image_bytes_to_markdown", lambda *a, **kw: "MD")
     monkeypatch.setattr(ocr, "restore_paragraphs", lambda s: s)
+    monkeypatch.setattr(ocr_service, "markdown_to_pdf_bytes", lambda md, **kw: b"%PDF%")
 
-    def fake_run(cmd, capture_output=True, text=True):
-        out_idx = cmd.index("-o") + 1
-        out_pdf = cmd[out_idx]
-        Path(out_pdf).write_bytes(b"%PDF%")
-        return types.SimpleNamespace(returncode=0, stderr="", stdout="")
+    pdf = ocr_service.image_bytes_to_pdf_bytes(simple_image_bytes, summarize=False)
+    assert pdf.startswith(b"%PDF%")
 
-    monkeypatch.setattr(ocr.subprocess, "run", fake_run)
 
-    pdf = ocr.image_bytes_to_pdf_bytes(simple_image_bytes, summarize=False)
+def test_image_bytes_to_pdf_bytes_with_summary(monkeypatch, ocr_service, simple_image_bytes):
+    monkeypatch.setattr(ocr_service, "image_bytes_to_markdown", lambda *a, **kw: "MD")
+    monkeypatch.setattr(ocr, "restore_paragraphs", lambda s: s)
+    monkeypatch.setattr(ocr, "summarize_markdown_openrouter_requests", lambda md: "SUMMD")
+    monkeypatch.setattr(ocr_service, "markdown_to_pdf_bytes", lambda md, **kw: b"%PDF%")
+
+    pdf = ocr_service.image_bytes_to_pdf_bytes(simple_image_bytes, summarize=True)
     assert pdf.startswith(b"%PDF%")

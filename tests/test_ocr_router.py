@@ -1,28 +1,36 @@
 import sys
 import types
-import importlib.util
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from punq import Container
+from app.core.services.validation_service import ImageValidator
 
 pytestmark = pytest.mark.asyncio
 
 
+# Фейковый OCRService
+
 def _install_fake_ocr_service_module() -> None:
     """
     Подкладываем фейковый модуль app.core.services.ocr_service,
-    чтобы импорт app/api/routers/ocr.py НЕ тянул cv2.
+    чтобы импорт app/api/routers/ocr.py НЕ тянул cv2 и реальные зависимости.
     """
     fake = types.ModuleType("app.core.services.ocr_service")
 
-    def images_bytes_to_pdf_bytes(images: list[bytes]) -> bytes:
-        return b"%PDF-FAKE-DEFAULT%"
+    class FakeOCRService:
+        def __init__(self, *args, **kwargs):
+            pass
 
-    fake.images_bytes_to_pdf_bytes = images_bytes_to_pdf_bytes
+        def images_bytes_to_pdf_bytes(self, images: list[bytes]) -> bytes:
+            return b"%PDF-FAKE-DEFAULT%"
+
+    fake.OCRService = FakeOCRService
     sys.modules["app.core.services.ocr_service"] = fake
 
+
+# Загружаем router модуль
 
 def _load_ocr_module():
     _install_fake_ocr_service_module()
@@ -30,6 +38,7 @@ def _load_ocr_module():
     project_root = Path(__file__).resolve().parents[1]
     ocr_path = project_root / "app" / "api" / "routers" / "ocr.py"
 
+    import importlib.util
     module_name = "test_loaded_ocr_router_module"
     spec = importlib.util.spec_from_file_location(module_name, ocr_path)
     if spec is None or spec.loader is None:
@@ -52,10 +61,11 @@ def _get_handler_fn():
     return getattr(ocr_module.ocr_to_pdf, "fn", ocr_module.ocr_to_pdf)
 
 
+# Фейковый UploadFile
+
 class FakeUpload:
     """
-    Нам нужен объект, у которого есть async read().
-    Больше твой handler от UploadFile ничего не требует.
+    Объект, у которого есть async read().
     """
 
     def __init__(self, content: bytes):
@@ -65,29 +75,21 @@ class FakeUpload:
         return self._content
 
 
-async def test_ocr_to_pdf_returns_pdf_and_sets_headers(monkeypatch):
-    captured: dict[str, list[bytes]] = {}
+# Тесты
 
-    def fake_images_bytes_to_pdf_bytes(images: list[bytes]) -> bytes:
-        captured["images"] = images
-        return b"%PDF-FAKE%\n..."
+async def test_ocr_to_pdf_returns_pdf_and_sets_headers():
+    fake_service = ocr_module.OCRService()
+    fake_service.images_bytes_to_pdf_bytes = lambda images: b"%PDF-FAKE%\n..."
 
-    monkeypatch.setattr(
-        ocr_module,
-        "images_bytes_to_pdf_bytes",
-        fake_images_bytes_to_pdf_bytes,
-        raising=True,
-    )
+    container = Container()
+    container.register(ocr_module.OCRService, instance=fake_service)
+    container.register(ImageValidator, instance=MagicMock())
 
     handler = _get_handler_fn()
-
-    files = [
-        FakeUpload(b"IMG1_BYTES"),
-        FakeUpload(b"IMG2_BYTES"),
-    ]
+    files = [FakeUpload(b"IMG1_BYTES"), FakeUpload(b"IMG2_BYTES")]
 
     resp = await handler(
-        container=Container(),
+        container=container,
         current_user=MagicMock(),
         data=files,
     )
@@ -95,25 +97,20 @@ async def test_ocr_to_pdf_returns_pdf_and_sets_headers(monkeypatch):
     assert resp.media_type == "application/pdf"
     assert resp.headers.get("Content-Disposition") == 'attachment; filename="document.pdf"'
     assert resp.content.startswith(b"%PDF-FAKE%")
-    assert captured["images"] == [b"IMG1_BYTES", b"IMG2_BYTES"]
 
 
-async def test_ocr_to_pdf_works_with_single_file(monkeypatch):
-    def fake_images_bytes_to_pdf_bytes(images: list[bytes]) -> bytes:
-        assert images == [b"ONLY_ONE"]
-        return b"%PDF-SINGLE%"
+async def test_ocr_to_pdf_works_with_single_file():
+    fake_service = ocr_module.OCRService()
+    fake_service.images_bytes_to_pdf_bytes = lambda images: b"%PDF-SINGLE%" if images == [b"ONLY_ONE"] else b"%PDF-OTHER%"
 
-    monkeypatch.setattr(
-        ocr_module,
-        "images_bytes_to_pdf_bytes",
-        fake_images_bytes_to_pdf_bytes,
-        raising=True,
-    )
+    container = Container()
+    container.register(ocr_module.OCRService, instance=fake_service)
+    container.register(ImageValidator, instance=MagicMock())
 
     handler = _get_handler_fn()
 
     resp = await handler(
-        container=Container(),
+        container=container,
         current_user=MagicMock(),
         data=[FakeUpload(b"ONLY_ONE")],
     )
@@ -122,29 +119,15 @@ async def test_ocr_to_pdf_works_with_single_file(monkeypatch):
     assert resp.content == b"%PDF-SINGLE%"
 
 
-async def test_ocr_to_pdf_empty_list_still_returns_pdf(monkeypatch):
-    """
-    По текущей реализации handler спокойно переживает пустой список:
-    он отдаст PDF из images_bytes_to_pdf_bytes([]).
-    """
-    def fake_images_bytes_to_pdf_bytes(images: list[bytes]) -> bytes:
-        assert images == []
-        return b"%PDF-EMPTY%"
+async def test_ocr_to_pdf_empty_list_raises_value_error():
+    fake_service = ocr_module.OCRService()
+    fake_service.images_bytes_to_pdf_bytes = lambda images: b"%PDF-EMPTY%"
 
-    monkeypatch.setattr(
-        ocr_module,
-        "images_bytes_to_pdf_bytes",
-        fake_images_bytes_to_pdf_bytes,
-        raising=True,
-    )
+    container = Container()
+    container.register(ocr_module.OCRService, instance=fake_service)
+    container.register(ImageValidator, instance=MagicMock())
 
     handler = _get_handler_fn()
 
-    resp = await handler(
-        container=Container(),
-        current_user=MagicMock(),
-        data=[],
-    )
-
-    assert resp.media_type == "application/pdf"
-    assert resp.content == b"%PDF-EMPTY%"
+    with pytest.raises(ValueError, match="No images provided"):
+        await handler(container=container, current_user=MagicMock(), data=[])

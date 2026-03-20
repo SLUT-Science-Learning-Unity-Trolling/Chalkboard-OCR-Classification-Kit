@@ -1,19 +1,18 @@
 from __future__ import annotations
+import io
 
 import pytest
 
-from app.core.services.validation_service import ValidationService
+from app.core.services.validation_service import ValidationService, ImageValidator
 from app.core.errors.auth import EmailValidationError
 from app.core.errors.validation import (
     IdentificatorIsNullError,
     PasswordValidationError,
     UsernameValidationError,
+    ImageValidationError, 
+    ImageExtensionValidationError
 )
 
-
-# ============================================================
-# Fake Config
-# ============================================================
 
 class FakeConfig:
     PASSWORD_MIN_LENGTH = 8
@@ -21,12 +20,8 @@ class FakeConfig:
     USERNAME_MIN_LENGTH = 3
     USERNAME_MAX_LENGTH = 20
     EMAIL_MAX_LENGTH = 254
-    ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "tif", "tiff"}
+    ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png"}
 
-
-# ============================================================
-# Fake UploadFile (only filename is used)
-# ============================================================
 
 class FakeUploadFile:
     def __init__(self, filename: str | None):
@@ -35,13 +30,14 @@ class FakeUploadFile:
 
 @pytest.fixture
 def service() -> ValidationService:
-    return ValidationService(config_class=FakeConfig)
+    return ValidationService(config_instance=FakeConfig())
+
+@pytest.fixture
+def image_validator() -> ImageValidator:
+    return ImageValidator(config=FakeConfig())
 
 
-# ============================================================
 # validate_password
-# ============================================================
-
 def test_validate_password_empty_raises(service: ValidationService):
     with pytest.raises(PasswordValidationError):
         service.validate_password("")
@@ -86,10 +82,8 @@ def test_validate_password_ok(service: ValidationService):
     service.validate_password("Aa1!aaaa")  # ok
 
 
-# ============================================================
-# validate_username
-# ============================================================
 
+# validate_username
 def test_validate_username_empty_raises(service: ValidationService):
     with pytest.raises(UsernameValidationError):
         service.validate_username("")
@@ -120,10 +114,8 @@ def test_validate_username_ok(service: ValidationService):
     service.validate_username("user_name-123")
 
 
-# ============================================================
-# validate_email
-# ============================================================
 
+# validate_email
 def test_validate_email_empty_raises(service: ValidationService):
     with pytest.raises(EmailValidationError):
         service.validate_email("")
@@ -150,10 +142,8 @@ def test_validate_email_ok(service: ValidationService):
     service.validate_email("User.Name+tag@example.com")
 
 
-# ============================================================
-# validate_credentials
-# ============================================================
 
+# validate_credentials
 def test_validate_credentials_identifier_none_raises(service: ValidationService):
     with pytest.raises(IdentificatorIsNullError):
         service.validate_credentials(None, "Aa1!aaaa", is_email=True)
@@ -165,14 +155,13 @@ def test_validate_credentials_identifier_blank_raises(service: ValidationService
 
 
 def test_validate_credentials_email_path_lowercase(monkeypatch):
-    svc = ValidationService(config_class=FakeConfig)
+    svc = ValidationService(config_instance=FakeConfig())
 
     calls = {"email": None}
 
     def spy_validate_email(self, e: str) -> None:
         calls["email"] = e
 
-    # Патчим МЕТОД НА КЛАССЕ (из-за __slots__ нельзя патчить на инстансе)
     monkeypatch.setattr(ValidationService, "validate_email", spy_validate_email, raising=True)
 
     svc.validate_credentials("USER@EXAMPLE.COM", "Aa1!aaaa", is_email=True)
@@ -180,7 +169,7 @@ def test_validate_credentials_email_path_lowercase(monkeypatch):
 
 
 def test_validate_credentials_username_path(monkeypatch):
-    svc = ValidationService(config_class=FakeConfig)
+    svc = ValidationService(config_instance=FakeConfig)
 
     calls = {"username": None}
 
@@ -194,7 +183,7 @@ def test_validate_credentials_username_path(monkeypatch):
 
 
 def test_validate_credentials_calls_password_validation(monkeypatch):
-    svc = ValidationService(config_class=FakeConfig)
+    svc = ValidationService(config_instance=FakeConfig)
 
     called = {"n": 0}
 
@@ -207,26 +196,41 @@ def test_validate_credentials_calls_password_validation(monkeypatch):
     assert called["n"] == 1
 
 
-# ============================================================
+
 # validate_image_file
-# ============================================================
+def test_validate_image_file_empty_filename_raises(image_validator: ImageValidator):
+    with pytest.raises(ImageValidationError):
+        image_validator.validate_image_file(FakeUploadFile(None))
 
-def test_validate_image_file_empty_filename_raises(service: ValidationService):
-    with pytest.raises(ValueError):
-        service.validate_image_file(FakeUploadFile(None))
-
-    with pytest.raises(ValueError):
-        service.validate_image_file(FakeUploadFile(""))
+    with pytest.raises(ImageValidationError):
+        image_validator.validate_image_file(FakeUploadFile(""))
 
 
-def test_validate_image_file_bad_extension_raises(service: ValidationService):
-    with pytest.raises(ValueError) as exc:
-        service.validate_image_file(FakeUploadFile("file.exe"))
+def test_validate_image_file_bad_extension_raises(image_validator: ImageValidator):
+    with pytest.raises(ImageExtensionValidationError) as exc:
+        image_validator.validate_image_file(FakeUploadFile("file.exe"))
     assert "Разрешены" in str(exc.value)
 
 
-def test_validate_image_file_ok(service: ValidationService):
-    service.validate_image_file(FakeUploadFile("x.JPG"))
-    service.validate_image_file(FakeUploadFile("x.jpeg"))
-    service.validate_image_file(FakeUploadFile("x.png"))
-    service.validate_image_file(FakeUploadFile("x.tiff"))
+class FakeImageFile:
+    def __init__(self, filename: str, content: bytes):
+        self.filename = filename
+        self.file = io.BytesIO(content)
+
+@pytest.fixture
+def image_validator():
+    class FakeConfig:
+        ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png"}
+    return ImageValidator(FakeConfig())
+
+PNG_BYTES = (
+    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01"
+    b"\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00"
+    b"\x00\x00\nIDATx\xdac``\x00\x00\x00\x02\x00\x01"
+    b"\xe2!\xbc\x33\x00\x00\x00\x00IEND\xaeB`\x82"
+)
+
+def test_validate_image_file_ok(image_validator):
+    for fname in ["test.jpg", "test.jpeg", "test.png"]:
+        file = FakeImageFile(fname, PNG_BYTES)
+        image_validator.validate_image_file(file)

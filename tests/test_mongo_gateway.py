@@ -8,8 +8,7 @@ pytestmark = pytest.mark.asyncio
 
 @pytest.fixture(autouse=True)
 def patch_config():
-    # Патчим Config ТАМ, где он используется (в модуле mongo.py)
-    with patch("app.adapters.gateways.mongo.Config") as mock_config:
+    with patch("app.adapters.gateways.mongo.config") as mock_config:
         mock_config.DATABASE_URL = "mongodb://localhost:27017"
         mock_config.DATABASE_NAME = "test_db"
         mock_config.DATABASE_USER = "user"
@@ -72,7 +71,7 @@ async def test_get_collection():
 async def test_close():
     gateway = MongoGateway()
 
-    mock_client = MagicMock()
+    mock_client = AsyncMock()
     gateway._client = mock_client
 
     await gateway.close()

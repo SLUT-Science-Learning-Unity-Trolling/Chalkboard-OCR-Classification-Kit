@@ -9,11 +9,6 @@ import pytest
 from bson import ObjectId
 
 
-# ----------------------------
-# Загрузка модуля роутера без импорта app.api.routers.__init__
-# (чтобы не подтянуть лишние зависимости)
-# ----------------------------
-
 def _load_users_module():
     project_root = Path(__file__).resolve().parents[1]
     user_py = project_root / "app" / "api" / "routers" / "user.py"
@@ -24,17 +19,13 @@ def _load_users_module():
     assert spec and spec.loader
 
     module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module  # важно для Litestar type-hints resolution
+    sys.modules[module_name] = module
     spec.loader.exec_module(module)
     return module
 
 
 users_module = _load_users_module()
 
-
-# ----------------------------
-# Вспомогательные фейки
-# ----------------------------
 
 @dataclass
 class FakeUserCreateDTO:
@@ -66,7 +57,6 @@ class FakeImageDTO:
 
     @classmethod
     def fromrow(cls, row: dict[str, Any]) -> "FakeImageDTO":
-        # поддержим варианты ключей
         _id = row.get("_id") or row.get("id") or ""
         return cls(id=str(_id), url=row["url"])
 
@@ -85,8 +75,6 @@ class FakeUser:
 
 
 class FakeUploadFile:
-    # Роутеру важно только "передать file дальше в сервис"
-    # читать файл он не пытается
     def __init__(self, filename: str = "x.png") -> None:
         self.filename = filename
 
@@ -125,7 +113,6 @@ class FakeContainer:
         self._service = service
 
     def resolve(self, cls: Any) -> Any:
-        # нам не важно, какой класс просит роутер, всегда даём наш сервис
         return self._service
 
 
@@ -139,23 +126,12 @@ def _handler_fn(route_handler_obj):
     return fn
 
 
-# ----------------------------
-# FIX: подменяем реальные DTO классы на фейки,
-# чтобы тесты не зависели от структуры твоих dataclass DTO.
-# ----------------------------
-
 @pytest.fixture(autouse=True)
 def patch_dtos(monkeypatch):
-    # UserDTO.fromrow
     monkeypatch.setattr(users_module, "UserDTO", FakeUserDTO, raising=True)
-    # ImageDTO.fromrow
     monkeypatch.setattr(users_module, "ImageDTO", FakeImageDTO, raising=True)
     yield
 
-
-# ----------------------------
-# ТЕСТЫ
-# ----------------------------
 
 @pytest.mark.asyncio
 async def test_create_user_calls_service_and_returns_dict():
@@ -173,7 +149,6 @@ async def test_create_user_calls_service_and_returns_dict():
 
     result = await fn(data=data, container=container)
 
-    # роутер у тебя возвращает user_dto.__dict__ (dict)
     assert isinstance(result, dict)
     assert result["username"] == "john"
     assert result["email"] == "john@example.com"
@@ -195,16 +170,14 @@ async def test_upload_image_converts_objectid_to_str_and_returns_imagedto():
 
     image_dto = await fn(container=container, current_user=current_user, data=upload)
 
-    # мы подменили ImageDTO на FakeImageDTO, поэтому ожидаем dataclass
     assert isinstance(image_dto, FakeImageDTO)
     assert image_dto.url == "https://cdn/img1.png"
-    # важно: ObjectId должен стать строкой
     assert isinstance(image_dto.id, str)
     assert image_dto.id == "65f000000000000000000001"
 
     assert service.calls[0][0] == "upload_image"
-    assert service.calls[0][1][0] == "u1"   # user_id
-    assert service.calls[0][1][1] is upload  # file передан как есть
+    assert service.calls[0][1][0] == "u1" 
+    assert service.calls[0][1][1] is upload 
 
 
 @pytest.mark.asyncio

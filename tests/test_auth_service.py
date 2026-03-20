@@ -16,9 +16,7 @@ from app.core.errors.security import InvalidTokenError
 from app.core.services.auth_service import AuthService
 
 
-# -----------------------------
 # Helpers / Fakes
-# -----------------------------
 
 
 @dataclass
@@ -36,9 +34,7 @@ class FakeContainer:
         return self._user_service
 
 
-# -----------------------------
 # Fixtures
-# -----------------------------
 
 
 @pytest.fixture
@@ -105,9 +101,7 @@ def paseto_mock(monkeypatch):
     return types.SimpleNamespace(create=create, parse=parse)
 
 
-# -----------------------------
 # auth_existing_user
-# -----------------------------
 
 
 @pytest.mark.asyncio
@@ -218,9 +212,7 @@ async def test_auth_existing_user_success_returns_dto_and_tokens(
     assert "jti" in refresh_kwargs["claims"]
 
 
-# -----------------------------
 # get_current_user
-# -----------------------------
 
 
 @pytest.mark.asyncio
@@ -324,9 +316,7 @@ async def test_get_current_user_success_returns_dto(monkeypatch, paseto_mock):
     assert dto.email == "john@example.com"
 
 
-# -----------------------------
 # refresh_tokens
-# -----------------------------
 
 
 @pytest.mark.asyncio
@@ -470,9 +460,7 @@ async def test_refresh_tokens_success_without_access_token_blacklists_only_refre
     assert args[0] == "rjti"
 
 
-# -----------------------------
 # _blacklist_token
-# -----------------------------
 
 
 @pytest.mark.asyncio

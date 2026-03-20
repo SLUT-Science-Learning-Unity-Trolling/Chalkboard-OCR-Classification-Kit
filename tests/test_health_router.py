@@ -12,42 +12,34 @@ from litestar.testing import TestClient
 pytestmark = pytest.mark.asyncio
 
 
-# -------------------------------
 # Pre-import patches (starlette + config + s3.client)
-# -------------------------------
 
 def _install_fake_starlette_json_response() -> None:
-    """
-    health.py импортирует:
-        from starlette.responses import JSONResponse
-
-    Litestar умеет работать со Starlette Response, потому что это ASGI-callable.
-    Поэтому заглушка ДОЛЖНА быть ASGI-callable: __call__(scope, receive, send).
-    """
     if "starlette" not in sys.modules:
         sys.modules["starlette"] = types.ModuleType("starlette")
 
     if "starlette.responses" not in sys.modules:
         responses_mod = types.ModuleType("starlette.responses")
 
-        class JSONResponse:
-            media_type = "application/json"
-
-            def __init__(self, content, status_code: int = 200, headers=None, **kwargs):
+        class _BaseResponse:
+            def __init__(self, content, status_code: int = 200, headers=None):
                 self.content = content
                 self.status_code = status_code
                 self.headers = headers or {}
 
-            def json(self):
-                return self.content
-
             async def __call__(self, scope, receive, send):
-                body = json.dumps(self.content, ensure_ascii=False).encode("utf-8")
+                if isinstance(self.content, (dict, list)):
+                    body = json.dumps(self.content, ensure_ascii=False).encode("utf-8")
+                    content_type = b"application/json"
+                else:
+                    body = str(self.content).encode("utf-8")
+                    content_type = self.media_type.encode("latin-1")
 
                 headers = [
-                    (b"content-type", b"application/json"),
+                    (b"content-type", content_type),
                     (b"content-length", str(len(body)).encode("ascii")),
                 ]
+
                 for k, v in (self.headers or {}).items():
                     headers.append(
                         (str(k).encode("latin-1"), str(v).encode("latin-1"))
@@ -62,7 +54,18 @@ def _install_fake_starlette_json_response() -> None:
                 )
                 await send({"type": "http.response.body", "body": body})
 
+        class JSONResponse(_BaseResponse):
+            media_type = "application/json"
+
+            def json(self):
+                return self.content
+
+        class PlainTextResponse(_BaseResponse):
+            media_type = "text/plain"
+
         responses_mod.JSONResponse = JSONResponse
+        responses_mod.PlainTextResponse = PlainTextResponse
+
         sys.modules["starlette.responses"] = responses_mod
 
 
@@ -73,7 +76,7 @@ def _ensure_config_has_health_attrs() -> None:
         Config.REDIS_RATE_LIMITING_DB
     Добавим, если в fake Config их нет.
     """
-    import app.config as app_config  # подмена из conftest
+    import app.config as app_config 
 
     if not hasattr(app_config, "Config"):
         raise RuntimeError("app.config has no Config in tests; check tests/conftest.py")
@@ -102,9 +105,7 @@ def _patch_minio_s3_client() -> None:
     s3_module.client = safe_client
 
 
-# -------------------------------
 # Load health.py directly (bypass routers/__init__.py)
-# -------------------------------
 
 def _load_health_module():
     _install_fake_starlette_json_response()
@@ -135,9 +136,7 @@ def client() -> TestClient:
     return TestClient(app)
 
 
-# -------------------------------
 # /health/server
-# -------------------------------
 
 async def test_server_health_check_ok(client: TestClient):
     resp = client.get("/health/server")
@@ -145,9 +144,7 @@ async def test_server_health_check_ok(client: TestClient):
     assert resp.json() == {"status": "ok"}
 
 
-# -------------------------------
 # /health/db
-# -------------------------------
 
 async def test_db_health_check_ok(client: TestClient):
     mock_mongo = MagicMock()
@@ -176,9 +173,7 @@ async def test_db_health_check_connection_failure_returns_500(client: TestClient
     assert "failed:" in body["mongodb"]
 
 
-# -------------------------------
 # /health/minio
-# -------------------------------
 
 async def test_minio_health_check_ok(client: TestClient):
     mock_minio = MagicMock()
@@ -208,9 +203,7 @@ async def test_minio_health_check_failure_returns_500(client: TestClient):
     assert "failed:" in body["minio"]
 
 
-# -------------------------------
 # /health/redis
-# -------------------------------
 
 async def test_redis_health_check_ok(client: TestClient):
     gw_black = MagicMock()
@@ -248,9 +241,7 @@ async def test_redis_health_check_failure_returns_500(client: TestClient):
     assert "redis" in body or "detail" in body
 
 
-# -------------------------------
 # /health/all
-# -------------------------------
 
 async def test_all_services_health_check_all_ok(client: TestClient):
     # Mongo ok

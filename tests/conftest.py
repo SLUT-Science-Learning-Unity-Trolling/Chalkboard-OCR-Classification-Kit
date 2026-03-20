@@ -37,6 +37,8 @@ def _install_fake_config():
 
         DEBUG = True
 
+        BASE_PROBLEM_URI = "https://example.com/probs"
+
     # В проекте у тебя используется: from app.config import config, token_key
     fake_config.Config = Config
     fake_config.config = Config()  # instance, чтобы работало config.ACCESS_TOKEN_EXPIRE_TIME

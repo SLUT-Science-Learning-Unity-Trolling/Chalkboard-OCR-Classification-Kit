@@ -33,9 +33,7 @@ from app.core.errors.validation import (
 pytestmark = pytest.mark.asyncio
 
 
-# ============================================================
 # Helpers / fakes
-# ============================================================
 
 @dataclass
 class FakeUploadFile:
@@ -70,6 +68,7 @@ def make_service(
     image_repo: Any | None = None,
     security: Any | None = None,
     validator: Any | None = None,
+    image_validator : Any | None = None,
     storage: Any | None = None,
 ) -> UserService:
     user_repo = user_repo or types.SimpleNamespace(
@@ -94,6 +93,9 @@ def make_service(
         validate_email=Mock(),
         validate_image_extension=AsyncMock(return_value=True),
     )
+    image_validator = image_validator or types.SimpleNamespace(
+    validate_image_file=Mock()
+    )
     storage = storage or FakeStorage()
 
     return UserService(
@@ -101,13 +103,12 @@ def make_service(
         image_repo=image_repo,
         security=security,
         validator=validator,
+        image_validator=image_validator,
         storage=storage,
     )
 
 
-# ============================================================
 # create_user
-# ============================================================
 
 async def test_create_user_passwords_do_not_match_raises():
     service = make_service()
@@ -122,7 +123,6 @@ async def test_create_user_username_taken_raises():
     )
     image_repo = types.SimpleNamespace(add=AsyncMock(), get_one=AsyncMock(), get_many=AsyncMock(), delete=AsyncMock())
 
-    # does_user_exists checks username first -> return existing with same username
     user_repo.get_one = AsyncMock(side_effect=[{"username": "john", "email": "x@y.com"}, None])
 
     service = make_service(user_repo=user_repo, image_repo=image_repo)
@@ -135,7 +135,6 @@ async def test_create_user_email_taken_raises():
     user_repo = types.SimpleNamespace(add=AsyncMock(), get_one=AsyncMock())
     image_repo = types.SimpleNamespace(add=AsyncMock(), get_one=AsyncMock(), get_many=AsyncMock(), delete=AsyncMock())
 
-    # username query -> None, email query -> existing with same email (lower)
     user_repo.get_one = AsyncMock(side_effect=[None, {"username": "other", "email": "a@b.com"}])
 
     service = make_service(user_repo=user_repo, image_repo=image_repo)
@@ -148,8 +147,6 @@ async def test_create_user_success_creates_lower_email_and_returns_user(monkeypa
     user_repo = types.SimpleNamespace(add=AsyncMock(), get_one=AsyncMock())
     image_repo = types.SimpleNamespace(add=AsyncMock(), get_one=AsyncMock(), get_many=AsyncMock(), delete=AsyncMock())
 
-    # does_user_exists: username -> None, email -> None
-    # after add: get_one({"_id": id}) -> user dict
     new_id = ObjectId()
     created_user = {
         "_id": new_id,
@@ -209,9 +206,7 @@ async def test_create_user_repo_add_failure_raises_usercreationerror():
         await service.create_user("john", "a@b.com", "pass", "pass")
 
 
-# ============================================================
 # does_user_exists
-# ============================================================
 
 async def test_does_user_exists_checks_username_then_email_lower():
     user_repo = types.SimpleNamespace(add=AsyncMock(), get_one=AsyncMock())
@@ -231,9 +226,7 @@ async def test_does_user_exists_checks_username_then_email_lower():
     assert calls[1].args[0] == {"email": "x@y.com"}
 
 
-# ============================================================
 # upload_image
-# ============================================================
 
 async def test_upload_image_invalid_extension_raises():
     validator = types.SimpleNamespace(
@@ -242,7 +235,11 @@ async def test_upload_image_invalid_extension_raises():
         validate_email=Mock(),
         validate_image_extension=AsyncMock(return_value=False),
     )
-    service = make_service(validator=validator)
+    image_validator = types.SimpleNamespace(
+    validate_image_file=Mock(side_effect=ImageExtensionValidationError("bad ext"))
+    )
+
+    service = make_service(image_validator=image_validator)
 
     f = FakeUploadFile(filename="bad.exe", _content=b"123")
     with pytest.raises(ImageExtensionValidationError):
@@ -267,7 +264,6 @@ async def test_upload_image_repo_failure_raises(monkeypatch):
 
     service = make_service(image_repo=image_repo, storage=storage)
 
-    # make deterministic filename/time
     monkeypatch.setattr(user_service_mod, "uuid4", lambda: "UUID-123")
     monkeypatch.setattr(user_service_mod, "time", lambda: 111)
 
@@ -283,7 +279,6 @@ async def test_upload_image_success_returns_uploaded_image(monkeypatch):
     new_img_id = ObjectId()
     user_id = ObjectId()
 
-    # deterministic
     monkeypatch.setattr(user_service_mod, "uuid4", lambda: "UUID-123")
     monkeypatch.setattr(user_service_mod, "time", lambda: 222)
 
@@ -322,9 +317,7 @@ async def test_upload_image_success_returns_uploaded_image(monkeypatch):
     assert getattr(uploaded, "url") == expected_url
 
 
-# ============================================================
 # get_all_user_images
-# ============================================================
 
 async def test_get_all_user_images_success_returns_list():
     image_repo = types.SimpleNamespace(add=AsyncMock(), get_one=AsyncMock(), get_many=AsyncMock(), delete=AsyncMock())
@@ -356,9 +349,7 @@ async def test_get_all_user_images_repo_raises_getimageserror_bubbles_as_getimag
         await service.get_all_user_images(str(ObjectId()))
 
 
-# ============================================================
 # delete_image
-# ============================================================
 
 async def test_delete_image_absent_user_raises():
     user_repo = types.SimpleNamespace(add=AsyncMock(), get_one=AsyncMock(), get_many=AsyncMock(), delete=AsyncMock())

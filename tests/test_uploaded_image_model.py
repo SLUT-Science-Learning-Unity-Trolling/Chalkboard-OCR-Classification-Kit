@@ -51,9 +51,7 @@ def test_properties_do_not_break_id_but_user_id_is_known_bug():
         uploaded_at=1,
     )
 
-    # id не должен падать
     _ = image.id
 
-    # user_id сейчас падает (фиксируем)
     with pytest.raises(RecursionError):
         _ = image.user_id
